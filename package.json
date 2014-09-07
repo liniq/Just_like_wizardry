@@ -1,0 +1,12 @@
+{
+    "name": "DeLiberoServer",
+    "version": "0.0.1",
+    "scripts": {
+        "start": "node ./Server/GameServer.js"
+    },
+    "dependencies": {
+        "restify": "2.8.2",
+        "socket.io" : "1.0.6",
+        "cfenv": "*"
+    }
+}
