@@ -1,408 +1,483 @@
-Wolf.setConsts({
-    FOV_RAD             : 75 * Math.PI / 180,
-    ISCHROME            : /chrome/.test(navigator.userAgent.toLowerCase()),
-    ISSAFARI            : /safari/.test(navigator.userAgent.toLowerCase()),
-    ISFIREFOX           : /firefox/.test(navigator.userAgent.toLowerCase()),
-    ISXP                : /windows nt 5\./.test(navigator.userAgent.toLowerCase()),
-    ISWEBKIT            : /webkit/.test(navigator.userAgent.toLowerCase())
-});
-Wolf.setConsts({
-    VIEW_DIST           : (Wolf.XRES / 2) / Math.tan((Wolf.FOV_RAD / 2)),
-    TEXTURERESOLUTION   : Wolf.ISCHROME ? 128 : 64
-});
+/**
+ * Created by Laur on 08.09.2014.
+ */
+
+var numTextures = 4;
+var wallTextures = [
+    "img/textures/walls_1.png",
+    "img/textures/walls_2.png",
+    "img/textures/walls_3.png",
+    "img/textures/walls_4.png"
+];
+
+var userAgent = navigator.userAgent.toLowerCase();
+var isGecko = userAgent.indexOf("gecko") != -1 && userAgent.indexOf("safari") == -1;
+
+// enable this to use a single image file containing all wall textures. This performs better in Firefox. Opera likes smaller images.
+var useSingleTexture = isGecko;
 
 
-Wolf.Renderer = (function() {
-    
-    var slices = [],
-        useBackgroundImage = Wolf.ISWEBKIT,
-        texturePath = "art/walls-shaded/" + Wolf.TEXTURERESOLUTION + "/",
-        spritePath = "art/sprites/" + Wolf.TEXTURERESOLUTION + "/",
-        sprites = [],
-        maxDistZ = 64 * 0x10000,
-        hasInit = false;
-        visibleSprites = [];
-        
-    var TILESHIFT = Wolf.TILESHIFT,
-        TILEGLOBAL = Wolf.TILEGLOBAL,
-        TRACE_HIT_VERT = Wolf.TRACE_HIT_VERT,
-        TRACE_HIT_DOOR = Wolf.TRACE_HIT_DOOR,
-        WALL_TILE = Wolf.WALL_TILE,
-        DOOR_TILE = Wolf.DOOR_TILE,
-        TEX_PLATE = Wolf.TEX_PLATE,
-        TILE2POS = Wolf.TILE2POS,
-        POS2TILE = Wolf.POS2TILE,
-        VIEW_DIST = Wolf.VIEW_DIST,
-        SLICE_WIDTH = Wolf.SLICE_WIDTH,
-        WALL_TEXTURE_WIDTH = Wolf.WALL_TEXTURE_WIDTH,
-        FINE2RAD = Wolf.FINE2RAD,
-        XRES = Wolf.XRES,
-        YRES = Wolf.YRES,
-        MINDIST = Wolf.MINDIST,
-        cos = Math.cos,
-        sin = Math.sin,
-        tan = Math.tan,
-        atan2 = Math.atan2,
-        round = Math.round,
-        sqrt = Math.sqrt;
+var screenStrips = [];
+var overlay;
 
-    function init() {
-        var image, slice, x;
-        if (hasInit) {
-            return;
-        }
-        hasInit = true;
-    
-        $("#game .renderer")
-            .width(Wolf.XRES + "px")
-            .height(Wolf.YRES + "px");
-            
-        for (x=0; x<Wolf.XRES; x += Wolf.SLICE_WIDTH) {
-            slice = $("<div>");
-            slice.css({
-                position : "absolute",
-                width : Wolf.SLICE_WIDTH + "px",
-                height : Wolf.YRES + "px",
-                left : x + "px",
-                top : 0,
-                overflow : "hidden"
-            });
-            slice.appendTo("#game .renderer");
+var fps = 0;
+var overlayText = "";
 
-            image = useBackgroundImage ? $("<div>") : $("<img>");
-            
-            image.css({
-                position : "absolute",
-                display : "block",
-                top : 0,
-                height : 0,
-                width : Wolf.SLICE_WIDTH * Wolf.WALL_TEXTURE_WIDTH + "px",
-                backgroundSize : "100% 100%"
-            });
-            
-            var sliceElement = slice[0];
-            sliceElement.texture = image[0];
-            sliceElement.appendChild(sliceElement.texture);
-            slices.push(sliceElement);
+
+var spriteMap;
+var visibleSprites = [];
+var oldVisibleSprites = [];
+
+function initSprites() {
+    spriteMap = [];
+    for (var y=0;y<map.length;y++) {
+        spriteMap[y] = [];
+    }
+
+    var screen = $("screen");
+
+    for (var i=0;i<mapItems.length;i++) {
+        var sprite = mapItems[i];
+        var itemType = itemTypes[sprite.type];
+        var img = dc("img");
+        img.src = itemType.img;
+        img.style.display = "none";
+        img.style.position = "absolute";
+
+        sprite.visible = false;
+        sprite.block = itemType.block;
+        sprite.img = img;
+
+        spriteMap[sprite.y][sprite.x] = sprite;
+        screen.appendChild(img);
+    }
+
+}
+
+var lastRenderCycleTime = 0;
+
+function renderCycle() {
+
+    updateMiniMap();
+
+    clearSprites();
+
+    castRays();
+
+    renderSprites();
+
+    renderEnemies();
+
+    // time since last rendering
+    var now = new Date().getTime();
+    var timeDelta = now - lastRenderCycleTime;
+    var cycleDelay = 1000 / 30;
+    if (timeDelta > cycleDelay) {
+        cycleDelay = Math.max(1, cycleDelay - (timeDelta - cycleDelay))
+    }
+    lastRenderCycleTime = now;
+    setTimeout(renderCycle, cycleDelay);
+
+    fps = 1000 / timeDelta;
+    if (showOverlay) {
+        updateOverlay();
+    }
+}
+function clearSprites() {
+    // clear the visible sprites array but keep a copy in oldVisibleSprites for later.
+    // also mark all the sprites as not visible so they can be added to visibleSprites again during raycasting.
+    oldVisibleSprites = [];
+    for (var i=0;i<visibleSprites.length;i++) {
+        var sprite = visibleSprites[i];
+        oldVisibleSprites[i] = sprite;
+        sprite.visible = false;
+    }
+    visibleSprites = [];
+}
+
+function renderSprites() {
+
+    for (var i=0;i<visibleSprites.length;i++) {
+        var sprite = visibleSprites[i];
+        var img = sprite.img;
+        img.style.display = "block";
+
+        // translate position to viewer space
+        var dx = sprite.x + 0.5 - player.x;
+        var dy = sprite.y + 0.5 - player.y;
+
+        // distance to sprite
+        var dist = Math.sqrt(dx*dx + dy*dy);
+
+        // sprite angle relative to viewing angle
+        var spriteAngle = Math.atan2(dy, dx) - player.rot;
+
+        // size of the sprite
+        var size = viewDist / (Math.cos(spriteAngle) * dist);
+
+        if (size <= 0) continue;
+
+        // x-position on screen
+        var x = Math.tan(spriteAngle) * viewDist;
+
+        img.style.left = (screenWidth/2 + x - size/2) + "px";
+
+        // y is constant since we keep all sprites at the same height and vertical position
+        img.style.top = ((screenHeight-size)/2)+"px";
+
+        img.style.width = size + "px";
+        img.style.height =  size + "px";
+
+        var dbx = sprite.x - player.x;
+        var dby = sprite.y - player.y;
+        var blockDist = dbx*dbx + dby*dby;
+        img.style.zIndex = -Math.floor(blockDist*1000);
+    }
+
+    // hide the sprites that are no longer visible
+    for (var i=0;i<oldVisibleSprites.length;i++) {
+        var sprite = oldVisibleSprites[i];
+        if (visibleSprites.indexOf(sprite) < 0) {
+            sprite.visible = false;
+            sprite.img.style.display = "none";
         }
     }
-    
-    function reset() {
-        $("#game .renderer .sprite").remove();
-        sprites = [];
-        visibleSprites = [];
-    }
-    
-    function processTrace(viewport, tracePoint) {
-        var x = tracePoint.x,
-            y = tracePoint.y,
-            vx = viewport.x,
-            vy = viewport.y,
-            
-            dx = viewport.x - tracePoint.x,
-            dy = viewport.y - tracePoint.y,
-            dist = Math.sqrt(dx*dx + dy*dy),
-            frac,
-            h, w, offset;
 
-        // correct for fisheye
-        dist = dist * cos(FINE2RAD(tracePoint.angle - viewport.angle));
-        
-        w = WALL_TEXTURE_WIDTH * SLICE_WIDTH;
-        h = (VIEW_DIST / dist * TILEGLOBAL) >> 0;
-        
-        if (tracePoint.flags & TRACE_HIT_DOOR) {
-            if (tracePoint.flags & TRACE_HIT_VERT) {
-                if (x < vx) {
-                    frac = tracePoint.frac;
-                } else {
-                    frac = 1 - tracePoint.frac;
-                }
-            } else {
-                if (y < vy) {
-                    frac = 1 - tracePoint.frac;
-                } else {
-                    frac = tracePoint.frac;
-                }
+}
+function renderEnemies() {
+
+    for (var i=0;i<enemies.length;i++) {
+        var enemy = enemies[i];
+        var img = enemy.img;
+
+        var dx = enemy.x - player.x;
+        var dy = enemy.y - player.y;
+
+        var angle = Math.atan2(dy, dx) - player.rot;
+
+        if (angle < -Math.PI) angle += 2*Math.PI;
+        if (angle >= Math.PI) angle -= 2*Math.PI;
+
+        // is enemy in front of player? Maybe use the FOV value instead.
+        if (angle > -Math.PI*0.5 && angle < Math.PI*0.5) {
+            var distSquared = dx*dx + dy*dy;
+            var dist = Math.sqrt(distSquared);
+            var size = viewDist / (Math.cos(angle) * dist);
+
+            if (size <= 0) continue;
+
+            var x = Math.tan(angle) * viewDist;
+
+            var style = img.style;
+            var oldStyles = enemy.oldStyles;
+
+            // height is equal to the sprite size
+            if (size != oldStyles.height) {
+                style.height =  size + "px";
+                oldStyles.height = size;
+            }
+
+            // width is equal to the sprite size times the total number of states
+            var styleWidth = size * enemy.totalStates;
+            if (styleWidth != oldStyles.width) {
+                style.width = styleWidth + "px";
+                oldStyles.width = styleWidth;
+            }
+
+            // top position is halfway down the screen, minus half the sprite height
+            var styleTop = ((screenHeight-size)/2);
+            if (styleTop != oldStyles.top) {
+                style.top = styleTop + "px";
+                oldStyles.top = styleTop;
+            }
+
+            // place at x position, adjusted for sprite size and the current sprite state
+            var styleLeft = (screenWidth/2 + x - size/2 - size*enemy.state);
+            if (styleLeft != oldStyles.left) {
+                style.left = styleLeft + "px";
+                oldStyles.left = styleLeft;
+            }
+
+            var styleZIndex = -(distSquared*1000)>>0;
+            if (styleZIndex != oldStyles.zIndex) {
+                style.zIndex = styleZIndex;
+                oldStyles.zIndex = styleZIndex;
+            }
+
+            var styleDisplay = "block";
+            if (styleDisplay != oldStyles.display) {
+                style.display = styleDisplay;
+                oldStyles.display = styleDisplay;
+            }
+
+            var styleClip = "rect(0, " + (size*(enemy.state+1)) + ", " + size + ", " + (size*(enemy.state)) + ")";
+            if (styleClip != oldStyles.clip) {
+                style.clip = styleClip;
+                oldStyles.clip = styleClip;
             }
         } else {
-            frac = 1 - tracePoint.frac;
-        }
-       
-        offset = frac * w;
-        if (offset > w - SLICE_WIDTH) {
-            offset = w - SLICE_WIDTH;
-        }
-        offset = round(offset / SLICE_WIDTH) * SLICE_WIDTH;
-        if (offset < 0) {
-            offset = 0;
-        }
-        
-        return {
-            w : w,
-            h : h,
-            dist : dist,
-            vert : tracePoint.flags & TRACE_HIT_VERT,
-            offset : offset
-        };
-    }
-    
-    function clear() {
-        var n, sprite;
-        for (n=0;n<visibleSprites.length;n++) {
-            sprite = visibleSprites[n].sprite;
-            if (sprite && sprite.div) {
-                sprite.div.style.display = "none";
+            var styleDisplay = "none";
+            if (styleDisplay != enemy.oldStyles.display) {
+                img.style.display = styleDisplay;
+                enemy.oldStyles.display = styleDisplay;
             }
         }
     }
-    
-    function draw(viewport, level, tracers, visibleTiles) {
-        var n, tracePoint;
-        
-        for (var n=0,len=tracers.length;n<len;++n) {
-            tracePoint = tracers[n];
-            if (!tracePoint.oob) {
-                if (tracePoint.flags & Wolf.TRACE_HIT_DOOR) {
-                    drawDoor(n, viewport, tracePoint, level);
-                } else {
-                    drawWall(n, viewport, tracePoint, level);
-                }
-            }
-        }
-        drawSprites(viewport, level, visibleTiles);
+}
+
+function updateOverlay() {
+    overlay.innerHTML = "FPS: " + fps.toFixed(1) + "<br/>" + overlayText;
+    overlayText = "";
+}
+
+
+function castRays() {
+    var stripIdx = 0;
+
+    for (var i=0;i<numRays;i++) {
+        // where on the screen does ray go through?
+        var rayScreenPos = (-numRays/2 + i) * stripWidth;
+
+        // the distance from the viewer to the point on the screen, simply Pythagoras.
+        var rayViewDist = Math.sqrt(rayScreenPos*rayScreenPos + viewDist*viewDist);
+
+        // the angle of the ray, relative to the viewing direction.
+        // right triangle: a = sin(A) * c
+        var rayAngle = Math.asin(rayScreenPos / rayViewDist);
+
+        castSingleRay(
+                player.rot + rayAngle, 	// add the players viewing direction to get the angle in world space
+            stripIdx++
+        );
     }
-    
-    function updateSlice(n, textureSrc, proc) {
-        var slice = slices[n],
-            image = slice.texture,
-            sliceStyle = slice.style,
-            imgStyle = image.style,
-            top = (Wolf.YRES - proc.h) / 2,
-            left = -(proc.offset) >> 0,
-            height = proc.h,
-            z = (maxDistZ - proc.dist) >> 0,
-            itop;
-            
-        if (Wolf.ISXP && Wolf.ISFIREFOX) {
-            itop = (proc.texture % 2) ? 0 : -height;
+}
+
+function castSingleRay(rayAngle, stripIdx) {
+
+    // first make sure the angle is between 0 and 360 degrees
+    rayAngle %= twoPI;
+    if (rayAngle < 0) rayAngle += twoPI;
+
+    // moving right/left? up/down? Determined by which quadrant the angle is in.
+    var right = (rayAngle > twoPI * 0.75 || rayAngle < twoPI * 0.25);
+    var up = (rayAngle < 0 || rayAngle > Math.PI);
+
+    var wallType = 0;
+
+    // only do these once
+    var angleSin = Math.sin(rayAngle);
+    var angleCos = Math.cos(rayAngle);
+
+    var dist = 0;	// the distance to the block we hit
+    var xHit = 0; 	// the x and y coord of where the ray hit the block
+    var yHit = 0;
+    var xWallHit = 0;
+    var yWallHit = 0;
+
+    var textureX;	// the x-coord on the texture of the block, ie. what part of the texture are we going to render
+    var wallX;	// the (x,y) map coords of the block
+    var wallY;
+
+    var wallIsShaded = false;
+
+    var wallIsHorizontal = false;
+
+    // first check against the vertical map/wall lines
+    // we do this by moving to the right or left edge of the block we're standing in
+    // and then moving in 1 map unit steps horizontally. The amount we have to move vertically
+    // is determined by the slope of the ray, which is simply defined as sin(angle) / cos(angle).
+
+    var slope = angleSin / angleCos; 	// the slope of the straight line made by the ray
+    var dXVer = right ? 1 : -1; 	// we move either 1 map unit to the left or right
+    var dYVer = dXVer * slope; 	// how much to move up or down
+
+    var x = right ? Math.ceil(player.x) : Math.floor(player.x);	// starting horizontal position, at one of the edges of the current map block
+    var y = player.y + (x - player.x) * slope;			// starting vertical position. We add the small horizontal step we just made, multiplied by the slope.
+
+    while (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
+        var wallX = (x + (right ? 0 : -1))>>0;
+        var wallY = (y)>>0;
+
+        if (spriteMap[wallY][wallX] && !spriteMap[wallY][wallX].visible) {
+            spriteMap[wallY][wallX].visible = true;
+            visibleSprites.push(spriteMap[wallY][wallX]);
+        }
+
+        // is this point inside a wall block?
+        if (map[wallY][wallX] > 0) {
+
+            var distX = x - player.x;
+            var distY = y - player.y;
+            dist = distX*distX + distY*distY;	// the distance from the player to this point, squared.
+
+            wallType = map[wallY][wallX]; // we'll remember the type of wall we hit for later
+            textureX = y % 1;	// where exactly are we on the wall? textureX is the x coordinate on the texture that we'll use later when texturing the wall.
+            if (!right) textureX = 1 - textureX; // if we're looking to the left side of the map, the texture should be reversed
+
+            xHit = x;	// save the coordinates of the hit. We only really use these to draw the rays on minimap.
+            yHit = y;
+            xWallHit = wallX;
+            yWallHit = wallY;
+
+            // make horizontal walls shaded
+            wallIsShaded = true;
+
+            wallIsHorizontal = true;
+
+            break;
+        }
+        x = x + dXVer;
+        y = y + dYVer;
+    }
+
+    // now check against horizontal lines. It's basically the same, just "turned around".
+    // the only difference here is that once we hit a map block,
+    // we check if there we also found one in the earlier, vertical run. We'll know that if dist != 0.
+    // If so, we only register this hit if this distance is smaller.
+
+    var slope = angleCos / angleSin;
+    var dYHor = up ? -1 : 1;
+    var dXHor = dYHor * slope;
+    var y = up ? Math.floor(player.y) : Math.ceil(player.y);
+    var x = player.x + (y - player.y) * slope;
+
+    while (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
+        var wallY = (y + (up ? -1 : 0))>>0;
+        var wallX = (x)>>0;
+
+        if (spriteMap[wallY][wallX] && !spriteMap[wallY][wallX].visible) {
+            spriteMap[wallY][wallX].visible = true;
+            visibleSprites.push(spriteMap[wallY][wallX]);
+        }
+
+        if (map[wallY][wallX] > 0) {
+            var distX = x - player.x;
+            var distY = y - player.y;
+            var blockDist = distX*distX + distY*distY;
+            if (!dist || blockDist < dist) {
+                dist = blockDist;
+                xHit = x;
+                yHit = y;
+                xWallHit = wallX;
+                yWallHit = wallY;
+
+                wallType = map[wallY][wallX];
+                textureX = x % 1;
+                if (up) textureX = 1 - textureX;
+
+                wallIsShaded = false;
+            }
+            break;
+        }
+        x = x + dXHor;
+        y = y + dYHor;
+    }
+
+    if (dist) {
+        //drawRay(xHit, yHit);
+
+        var strip = screenStrips[stripIdx];
+
+        dist = Math.sqrt(dist);
+
+        // use perpendicular distance to adjust for fish eye
+        // distorted_dist = correct_dist / cos(relative_angle_of_ray)
+        dist = dist * Math.cos(player.rot - rayAngle);
+
+        // now calc the position, height and width of the wall strip
+
+        // "real" wall height in the game world is 1 unit, the distance from the player to the screen is viewDist,
+        // thus the height on the screen is equal to wall_height_real * viewDist / dist
+
+        var height = Math.round(viewDist / dist);
+
+        // width is the same, but we have to stretch the texture to a factor of stripWidth to make it fill the strip correctly
+        var width = height * stripWidth;
+
+        // top placement is easy since everything is centered on the x-axis, so we simply move
+        // it half way down the screen and then half the wall height back up.
+        var top = Math.round((screenHeight - height) / 2);
+
+        var imgTop = 0;
+
+        var style = strip.style;
+        var oldStyles = strip.oldStyles;
+
+        var styleHeight;
+        if (useSingleTexture) {
+            // then adjust the top placement according to which wall texture we need
+            imgTop = (height * (wallType-1))>>0;
+            var styleHeight = (height * numTextures)>>0;
         } else {
-            itop = -(proc.texture-1) * height;
-            textureSrc = "art/walls-shaded/64/walls.png";
-        }
-       
-        if (image._src != textureSrc) {
-            image._src = textureSrc;
-            if (useBackgroundImage) {
-                imgStyle.backgroundImage = "url(" + textureSrc + ")";
-            } else {
-                image.src = textureSrc;
+            var styleSrc = wallTextures[wallType-1];
+            if (oldStyles.src != styleSrc) {
+                strip.src = styleSrc;
+                oldStyles.src = styleSrc
             }
+            var styleHeight = height;
         }
-        
-        if (slice._zIndex != z) {
-            sliceStyle.zIndex = slice._zIndex = z;
+
+        if (oldStyles.height != styleHeight) {
+            style.height = styleHeight + "px";
+            oldStyles.height = styleHeight
         }
-        if (image._height != height) {
-            sliceStyle.height = (image._height = height) + "px";
-            if (Wolf.ISXP && Wolf.ISFIREFOX) {
-                imgStyle.height = (height * 2) + "px";
-            } else {
-                imgStyle.height = (height * 120) + "px";
-            }
+
+        var texX = Math.round(textureX*width);
+        if (texX > width - stripWidth)
+            texX = width - stripWidth;
+        texX += (wallIsShaded ? width : 0);
+
+        var styleWidth = (width*2)>>0;
+        if (oldStyles.width != styleWidth) {
+            style.width = styleWidth +"px";
+            oldStyles.width = styleWidth;
         }
-        
-        if (image._itop != itop) {
-            imgStyle.top = (image._itop = itop) + "px";
+
+        var styleTop = top - imgTop;
+        if (oldStyles.top != styleTop) {
+            style.top = styleTop + "px";
+            oldStyles.top = styleTop;
         }
-        
-        if (image._top != top) {
-            sliceStyle.top = (image._top = top) + "px";
+
+        var styleLeft = stripIdx*stripWidth - texX;
+        if (oldStyles.left != styleLeft) {
+            style.left = styleLeft + "px";
+            oldStyles.left = styleLeft;
         }
-        if (image._left != left) {
-            imgStyle.left = (image._left = left) + "px";
+
+        var styleClip = "rect(" + imgTop + ", " + (texX + stripWidth)  + ", " + (imgTop + height) + ", " + texX + ")";
+        if (oldStyles.clip != styleClip) {
+            style.clip = styleClip;
+            oldStyles.clip = styleClip;
         }
+
+        var dwx = xWallHit - player.x;
+        var dwy = yWallHit - player.y;
+        var wallDist = dwx*dwx + dwy*dwy;
+        var styleZIndex = -(wallDist*1000)>>0;
+        if (styleZIndex != oldStyles.zIndex) {
+            strip.style.zIndex = styleZIndex;
+            oldStyles.zIndex = styleZIndex;
+        }
+
     }
 
-    function drawWall(n, viewport, tracePoint, level) {
-        var x = tracePoint.tileX,
-            y = tracePoint.tileY,
-            vx = POS2TILE(viewport.x),
-            vy = POS2TILE(viewport.y),
-            tileMap = level.tileMap,
-            proc = processTrace(viewport, tracePoint),
-            texture = proc.vert ? level.wallTexX[x][y] : level.wallTexY[x][y],
-            textureSrc;
-        
-        
-        // door sides
-        if (tracePoint.flags & TRACE_HIT_VERT) {
-            if (x >= vx && tileMap[x-1][y] & DOOR_TILE) {
-                texture = TEX_PLATE;
-            }
-            if (x < vx && tileMap[x+1][y] & DOOR_TILE) {
-                texture = TEX_PLATE;
-            }
-        } else {
-            if (y >= vy && tileMap[x][y-1] & DOOR_TILE) {
-                texture = TEX_PLATE;
-            }
-            if (y < vy && tileMap[x][y+1] & DOOR_TILE) {
-                texture = TEX_PLATE;
-            }
-        }
-        
-        texture++;
-        
-        proc.texture = texture;
-        
-        if (texture % 2 == 0) {
-            texture--;
-        }
-        textureSrc = texturePath + "w_" + texture + ".png";
-        
-        updateSlice(n, textureSrc, proc);
-    }
-    
-    function drawDoor(n, viewport, tracePoint, level) {
-        var proc = processTrace(viewport, tracePoint),
-            texture, textureSrc;
-            
-        //texture = Wolf.TEX_DDOOR + 1;
-        texture = level.state.doorMap[tracePoint.tileX][tracePoint.tileY].texture + 1;
-        
-        proc.texture = texture;
-        
-        if (texture % 2 == 0) {
-            texture -= 1;
-        }
-        
-        textureSrc = texturePath + "w_" + texture + ".png";
-        
-        updateSlice(n, textureSrc, proc);
-    }
-        
-    function drawSprites(viewport, level, visibleTiles) {
-        var vis, n,
-            dist, dx, dy, angle,
-            z, width, size,
-            div, image,
-            divStyle, imgStyle;
+}
 
-      
-        // build visible sprites list
-        visibleSprites = Wolf.Sprites.createVisList(viewport, level, visibleTiles);
-        
-        for (n = 0; n < visibleSprites.length; ++n ){
-            vis = visibleSprites[n];
-            dist = vis.dist;
-            
-            if (dist < MINDIST / 2 ) {
-                //continue; // little hack to save speed & z-buffer
-            }
+function drawRay(rayX, rayY) {
+    var miniMapObjects = $("minimapobjects");
+    var objectCtx = miniMapObjects.getContext("2d");
 
-            // make sure sprite is loaded
-            if (!vis.sprite.div) {
-                loadSprite(vis.sprite)
-            }
-            
-            div = vis.sprite.div;
-            divStyle = div.style;
-            
-            image = div.image;
-            imgStyle = image.style;
-            
-            dx = vis.sprite.x  - viewport.x;
-            dy = vis.sprite.y  - viewport.y;
-            angle = atan2(dy, dx) - FINE2RAD(viewport.angle);
-            
-            //dist = dist * Math.cos(angle);
-           
-            size = (VIEW_DIST / dist * TILEGLOBAL) >> 0;
+    objectCtx.strokeStyle = "rgba(0,100,0,0.3)";
+    objectCtx.lineWidth = 0.5;
+    objectCtx.beginPath();
+    objectCtx.moveTo(player.x * miniMapScale, player.y * miniMapScale);
+    objectCtx.lineTo(
+            rayX * miniMapScale,
+            rayY * miniMapScale
+    );
+    objectCtx.closePath();
+    objectCtx.stroke();
+}
 
-            divStyle.display = "block";
-            divStyle.width = size + "px";
-            divStyle.height = size + "px";
-            
-            divStyle.left = (XRES / 2 - size / 2 - tan(angle) * VIEW_DIST) + "px";
-            
-            divStyle.top = (YRES / 2 - size / 2) + "px";
 
-            texture = Wolf.Sprites.getTexture(vis.sprite.tex[0]);
-            textureSrc = spritePath + texture.sheet;
-
-            if (image._src != textureSrc) {
-                image._src = textureSrc;
-                if (useBackgroundImage) {
-                    imgStyle.backgroundImage = "url(" + textureSrc + ")";
-                } else {
-                    image.src = textureSrc;
-                }
-            }
-
-            z = (maxDistZ - dist) >> 0;
-            width = texture.num * size;
-            left = -texture.idx * size;
-                
-            if (div._zIndex != z) {
-                divStyle.zIndex = div._zIndex = z;
-            }
-            if (image._width != width) {
-                imgStyle.width = (image._width = width) + "px";
-            }
-            if (image._height != size) {
-                imgStyle.height = (image._height = size) + "px";
-            }
-            if (image._left != left) {
-                imgStyle.left = (image._left = left) + "px";
-            }
-        }
-    }
-    
-    function unloadSprite(sprite) {
-        if (sprite.div) {
-            $(sprite.div).remove();
-            sprite.div = null;
-        }
-    }
-    
-    function loadSprite(sprite) {
-        var div = document.createElement("div"),
-            image;
-
-        div.style.display = "none";
-        div.style.position = "absolute";
-        div.style.width = "128px";
-        div.style.height = "128px";
-        div.style.overflow = "hidden";
-        div.className = "sprite";
-
-        image = useBackgroundImage ? $("<div>") : $("<img>");
-        
-        image.css({
-            position : "absolute",
-            display : "block",
-            top : 0,
-            height : "100%",
-            width : "100%",
-            backgroundSize : "100%",
-            backgroundRepeat : "no-repeat"
-        });
-        
-        div.image = image[0];
-        div.appendChild(div.image);
-        
-        sprite.div = div;
-        $("#game .renderer").append(div);
-    }
-    
-    return {
-        init : init,
-        draw : draw,
-        clear : clear,
-        loadSprite : loadSprite,
-        unloadSprite : unloadSprite,
-        reset : reset
-    };
-
-})();

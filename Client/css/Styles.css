@@ -1,0 +1,153 @@
+body {
+    background:#000;
+    color:#fff;
+    font-family: Arial, serif;
+}
+
+div#minimapcontainer {
+    position: absolute;
+    top: 30;
+    left: 15;
+    opacity: 0.3;
+    width: 126px!important;
+    height: 110px!important;
+}
+canvas#minimap {
+    position : absolute;
+    width: 126px!important;
+    height: 110px!important;
+}
+canvas#minimapobjects {
+    position : absolute;
+    width: 126px!important;
+    height: 110px!important;
+}
+
+div#overlay {
+    position : absolute;
+    width : 800px;
+    height : 600px;
+    padding : 5px;
+    color : white;
+    font-family : lucida console, courier new;
+    font-size : 10px;
+    z-index : 100000001;
+}
+
+div#floor {
+    position : absolute;
+    width : 100%;
+    height : 100%;
+    background-color : rgb(128,128,128);
+    z-index : -10000000;
+}
+
+div#ceiling {
+    position : absolute;
+    width : 800px;
+    height : 300px;
+    background: url(../img/textures/sky.png) no-repeat;
+    z-index : -10000000;
+}
+
+
+#screen {
+    position : relative;
+    width : 800px;
+    height : 600px;
+    border : 1px solid black;
+    overflow : hidden;
+    margin: 2% auto;
+}
+
+#party {
+    position : absolute;
+    right: 20px;
+}
+
+#party .one {
+    font-size: 12px;
+    margin: 10px;
+    width: 100px;
+}
+
+#party .one img {
+    width: 90px;
+}
+
+#party .one .name {
+    font-size: 16px;
+    margin-right: 10px;
+}
+
+
+#ui {
+    z-index: 110000000;
+    position : absolute;
+    top: 500px;
+    height:100px;
+    width: 100%;
+    padding: 15px;
+    background: -moz-linear-gradient(top,  rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.9) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(0,0,0,0.9)), color-stop(100%,rgba(0,0,0,0.9))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.9) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.9) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.9) 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.9) 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e6000000', endColorstr='#e6000000',GradientType=0 ); /* IE6-9 */
+}
+#ui .portret {
+    float:left;
+    margin-right: 15px;
+}
+#ui span {
+    font-size: 12px;
+}
+
+#ui .name {
+    font-size: 20px;
+    margin-right: 15px;
+    width: 80px;
+}
+
+#ui .but {
+    padding: 12px 5px 0 20px;
+}
+
+#ui .but a {
+    margin-right: 10px;
+}
+
+#ui select {
+    margin: 10px 0;
+}
+
+#ui .action {
+    width: 140px;
+}
+
+#ui .ready {
+    margin: 20px 30px 0 5px;
+    font-size:25px;
+}
+
+.left {
+    float:left;
+}
+
+.right {
+    float:right;
+}
+
+.yel {
+    color:#EEDD82;
+}
+
+#chat {
+    position: absolute;
+    bottom: 100px;
+    color: #ffffff;
+    display: block;
+    width: 200px;
+    height: 100px;
+}

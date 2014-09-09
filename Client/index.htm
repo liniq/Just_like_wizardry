@@ -1,0 +1,407 @@
+<html>
+<head>
+<title>Just like wizardry</title>
+<link rel="stylesheet" type="text/css" href="css/Styles.css">
+<script src="js/excanvas.js" type="text/javascript"></script>
+<script src="./game.js"></script>
+<script src="js/renderer.js" type="text/javascript"></script>
+<script src="/socket.io/socket.io.js" type="text/javascript"></script>
+</head>
+<body>
+
+<div id="screen">
+	<div id="floor"></div>
+	<div id="ceiling"></div>
+	
+	<div id="minimapcontainer">
+		<canvas id="minimap"></canvas>
+		<canvas id="minimapobjects"></canvas>
+	</div>
+    <span id="chat"></span>
+    <div id="party">
+	    <div class="one left">
+			<span class="name">Laur</span> <span>hp: 4</span><br>
+			<img class="portret" src="img/templar_assassin_hphover.png" alt="" /><br>
+			<span class="yel">Action:</span> <span>Defend yourself</span>
+		</div>
+		
+		 <div class="one left">
+			<span class="name">Markus</span> <span>hp: 6</span><br>
+			<img class="portret" src="img/keeper_of_the_light_hphover.png" alt="" /><br>
+			<span>NOT READY</span>
+		</div>
+		
+		<div class="one left">
+			<span class="name">Liniq</span> <span>hp: 4</span><br>
+			<img class="portret" src="img/life_stealer_hphover.png" alt="" /><br>
+			<span class="yel">Action:</span> <span>Defend yourself</span>
+		</div>
+	</div>
+	
+	<div id="ui">
+	    <img class="portret" src="img/omniknight_hphover.png" alt="" />
+		<div id="hero">
+		<div class="name left">Airiz <br>
+		<span>Skill:</span> <span>heal the target 5hp</span>
+		</div>
+			<div class="left">
+				<span>HP:</span> <span>10</span><br>
+				<span>Damage:</span> <span>2-4</span><br>
+				<span>Defence:</span> <span>3</span><br>
+			</div>
+			<div class="but left">
+				<a href="#"><img src="img/itemcat_weapons.png" alt="" /></a>
+				<a href="#"><img src="img/itemcat_attributes.png" alt="" /></a>
+				<a href="#"><img src="img/itemcat_support.png" alt="" /></a>
+			</div>
+			<div class="action left">
+				<select>
+					<option>Airiz</option>
+					<option>Laur</option>
+					<option>Markus</option>
+					<option>Liniq</option>
+					<option>Enemy</option>
+				</select>
+				<br>
+				<span class="yel">Action:</span> <span>Defend yourself</span>
+                <input type="button" id="masterbutt"  value="request control" onclick="requestControl()" />
+			</div>
+			<div class="ready right">
+				<a class="yel" href="#">READY!</a>
+			</div>
+		</div>
+	</div>
+		
+</div>
+
+
+
+<div id="debug"></div>
+
+<script type="text/javascript">
+
+// just a few helper functions
+var $ = function(id) { return document.getElementById(id); };
+var dc = function(tag) { return document.createElement(tag); };
+
+// indexOf for IE. From: https://developer.mozilla.org/En/Core_JavaScript_1.5_Reference:Objects:Array:indexOf
+if (!Array.prototype.indexOf) {
+	Array.prototype.indexOf = function(elt /*, from*/) {
+		var len = this.length;
+		var from = Number(arguments[1]) || 0;
+		from = (from < 0) ? Math.ceil(from) : Math.floor(from);
+		if (from < 0)
+			from += len;
+		for (; from < len; from++) {
+			if (from in this && this[from] === elt)
+				return from;
+		}
+		return -1;
+	};
+}
+
+function init() {
+
+	mapWidth = map[0].length;
+	mapHeight = map.length;
+
+    initNetwork();
+
+	initScreen();
+
+	initSprites();
+
+	initEnemies();
+
+	drawMiniMap();
+
+	gameCycle();
+	renderCycle();
+}
+
+
+
+var enemies = [];
+
+function initEnemies() {
+	var screen = $("screen");
+
+	for (var i=0;i<mapEnemies.length;i++) {
+		var enemy = mapEnemies[i];
+		var type = enemyTypes[enemy.type];
+		var img = dc("img");
+		img.src = type.img;
+		img.style.display = "none";
+		img.style.position = "absolute";
+
+		enemy.state = 0;
+		enemy.rot = 0;
+		enemy.rotDeg = 0;
+		enemy.dir = 0;
+		enemy.speed = 0;
+		enemy.moveSpeed = type.moveSpeed;
+		enemy.rotSpeed = type.rotSpeed;
+		enemy.totalStates = type.totalStates;
+
+		enemy.oldStyles = {
+			left : 0,
+			top : 0,
+			width : 0,
+			height : 0,
+			clip : "",
+			display : "none",
+			zIndex : 0
+		};
+
+		enemy.img = img;
+		enemies.push(enemy);
+
+		screen.appendChild(img);
+	}
+}
+
+function initScreen() {
+	var screen = $("screen");
+	for (var i=0;i<screenWidth;i+=stripWidth) {
+		var strip = dc("img");
+		strip.style.position = "absolute";
+		strip.style.height = "0px";
+		strip.style.left = strip.style.top = "0px";
+
+		if (useSingleTexture) {
+			strip.src = (window.opera ? "walls_19color.png" : "walls.png");
+		}
+
+		strip.oldStyles = {
+			left : 0,
+			top : 0,
+			width : 0,
+			height : 0,
+			clip : "",
+			src : ""
+		};
+
+		screenStrips.push(strip);
+		screen.appendChild(strip);
+	}
+
+	// overlay div for adding text like fps count, etc.
+	overlay = dc("div");
+	overlay.id = "overlay";
+	overlay.style.display = showOverlay ? "block" : "none";
+	screen.appendChild(overlay);
+
+}
+
+var socket = io();
+var  nickname;
+
+function initNetwork()
+{
+
+
+        // Check if nickname stored in localStorage
+        if('localStorage' in window && localStorage.getItem('nickname')) {
+            nickname = localStorage.getItem('nickname');
+        } else {
+            // If not in localStorage, prompt user for nickname
+            nickname = prompt('Please enter your nickname');
+            if('localStorage' in window) {
+                localStorage.setItem('nickname', nickname);
+            }
+        }
+
+        socket.emit('join', nickname);
+        socket.on('join', function(nick) {
+            $("chat").innerHTML += "<br/>" + nick +" joined the game!";
+            setTimeout(clearChat,5000);
+        });
+        socket.on('masterChanged', function(nick) {
+            $("chat").innerHTML += "<br/>" + nick + " now controls movements!";
+            if (nickname==nick)
+            {
+                //alert("you now control movements. Use buttons to move");
+                bindKeys();
+                //$('masterbutt').disabled=true;
+            }
+            else
+            {
+                document.onkeyup = null;
+                document.onkeydown = null;
+                //$('masterbutt').disabled=false;
+            }
+            setTimeout(clearChat,5000);
+        });
+
+        socket.on('leave', function(nick) {
+            $("chat").innerHTML += "<br/>" + nick + " left the game!";
+            setTimeout(clearChat,5000);
+        });
+
+
+        socket.on('move', function(data) {
+            player.speed=data.s;
+            player.dir = data.d;
+            if (data.x) {
+                player.x = data.x;
+                player.y = data.y;
+                player.rotDeg = data.r;
+
+            }
+        });
+
+}
+
+function requestControl()
+{
+    socket.emit('masterChanged',nickname);
+}
+
+function clearChat()
+{
+    $("chat").innerHTML ="";
+}
+// bind keyboard events to game functions (movement, etc)
+function bindKeys() {
+
+	document.onkeydown = function(e) {
+		e = e || window.event;
+
+		switch (e.keyCode) { // which key was pressed?
+
+			case 38: // up, move player forward, ie. increase speed
+				//player.speed = 1;
+                    socket.emit('move', {s: 1, d: player.dir});
+				break;
+
+            case 40: // down, move player backward, set negative speed
+				//player.speed = -1;
+                socket.emit('move', {s: -1, d: player.dir});
+				break;
+
+			case 37: // left, rotate player left
+				//player.dir = -1;
+                socket.emit('move', {s: player.speed, d: -1});
+				break;
+
+			case 39: // right, rotate player right
+				//player.dir = 1;
+                socket.emit('move', {s: player.speed, d: 1});
+				break;
+		}
+	};
+
+	document.onkeyup = function(e) {
+		e = e || window.event;
+
+		switch (e.keyCode) {
+			case 38:
+			case 40:
+				//player.speed = 0;	// stop the player movement when up/down key is released
+                socket.emit('move', {s: 0, d: player.dir, x:player.x, y: player.y, r: player.rotDeg});
+				break;
+			case 37:
+			case 39:
+				//player.dir = 0;
+                socket.emit('move', {s: player.speed, d: 0, x:player.x, y: player.y, r: player.rotDeg});
+				break;
+		}
+	};
+}
+
+function updateMiniMap() {
+
+	var miniMap = $("minimap");
+	var miniMapObjects = $("minimapobjects");
+
+	var objectCtx = miniMapObjects.getContext("2d");
+	miniMapObjects.width = miniMapObjects.width;
+
+	objectCtx.fillStyle = "red";
+	objectCtx.fillRect(		// draw a dot at the current player position
+		player.x * miniMapScale - 2, 
+		player.y * miniMapScale - 2,
+		4, 4
+	);
+
+	objectCtx.strokeStyle = "red";
+	objectCtx.beginPath();
+	objectCtx.moveTo(player.x * miniMapScale, player.y * miniMapScale);
+	objectCtx.lineTo(
+		(player.x + Math.cos(player.rot) * 4) * miniMapScale,
+		(player.y + Math.sin(player.rot) * 4) * miniMapScale
+	);
+	objectCtx.closePath();
+	objectCtx.stroke();
+
+	for (var i=0;i<enemies.length;i++) {
+		var enemy = enemies[i];
+
+		objectCtx.fillStyle = "blue";
+		objectCtx.fillRect(		// draw a dot at the enemy position
+			enemy.x * miniMapScale - 2, 
+			enemy.y * miniMapScale - 2,
+			4, 4
+		);
+	}
+}
+
+function drawMiniMap() {
+
+	// draw the topdown view minimap
+
+	var miniMap = $("minimap");			// the actual map
+	var miniMapCtr = $("minimapcontainer");		// the container div element
+	var miniMapObjects = $("minimapobjects");	// the canvas used for drawing the objects on the map (player character, etc)
+
+	miniMap.width = mapWidth * miniMapScale;	// resize the internal canvas dimensions 
+	miniMap.height = mapHeight * miniMapScale;	// of both the map canvas and the object canvas
+	miniMapObjects.width = miniMap.width;
+	miniMapObjects.height = miniMap.height;
+
+	var w = (mapWidth * miniMapScale) + "px" 	// minimap CSS dimensions
+	var h = (mapHeight * miniMapScale) + "px"
+	miniMap.style.width = miniMapObjects.style.width = miniMapCtr.style.width = w;
+	miniMap.style.height = miniMapObjects.style.height = miniMapCtr.style.height = h;
+
+	var ctx = miniMap.getContext("2d");
+
+	ctx.fillStyle = "white";
+	ctx.fillRect(0,0,miniMap.width,miniMap.height);
+
+	// loop through all blocks on the map
+	for (var y=0;y<mapHeight;y++) {
+		for (var x=0;x<mapWidth;x++) {
+
+			var wall = map[y][x];
+
+			if (wall > 0) { // if there is a wall block at this (x,y) ...
+				ctx.fillStyle = "rgb(200,200,200)";
+				ctx.fillRect(				// ... then draw a block on the minimap
+					x * miniMapScale,
+					y * miniMapScale,
+					miniMapScale,miniMapScale
+				);
+			}
+
+			if (spriteMap[y][x]) {
+				ctx.fillStyle = "rgb(100,200,100)";
+				ctx.fillRect(
+					x * miniMapScale + miniMapScale*0.25,
+					y * miniMapScale + miniMapScale*0.25,
+					miniMapScale*0.5,miniMapScale*0.5
+				);
+			}
+		}
+	}
+
+	updateMiniMap();
+}
+
+setTimeout(init, 1);
+
+</script>
+
+
+
+</body>
