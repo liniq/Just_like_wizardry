@@ -42,7 +42,7 @@ io.sockets.on('connection', function (socket) {
     socket.on('masterChanged', function (nick) {
         if (masterSocketId!=socket.id) {
             masterSocketId = socket.id;
-            io.sockets.emit('masterChanged', nick);
+            io.sockets.emit('masterChanged', {id: socket.id, nick:nick});
         }
     });
     socket.on('disconnect', function () {

@@ -10,6 +10,18 @@ var wallTextures = [
     "img/textures/walls_4.png"
 ];
 
+var miniMapScale = 8;
+var screenWidth = 800;
+var screenHeight = 600;
+var showOverlay = true;
+var stripWidth = 3;
+var fov = 60 * Math.PI / 180;
+
+var numRays = Math.ceil(screenWidth / stripWidth);
+//var fovHalf = fov / 2;
+
+var viewDist = (screenWidth/2) / Math.tan((fov / 2));
+
 var userAgent = navigator.userAgent.toLowerCase();
 var isGecko = userAgent.indexOf("gecko") != -1 && userAgent.indexOf("safari") == -1;
 

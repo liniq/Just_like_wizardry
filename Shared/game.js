@@ -40,8 +40,8 @@ var itemTypes = [
 var mapItems = [
 
     // lamps in center area
-    {type:2, x:10, y:7},
-    {type:3, x:15, y:7},
+    {type:3, x:10, y:7},
+    {type:2, x:15, y:7},
 
     // lamps in bottom corridor
     {type:3, x:5, y:22},
@@ -75,30 +75,11 @@ var player = {
     speed : 0,		// is the playing moving forward (speed = 1) or backwards (speed = -1).
     moveSpeed : 0.10,	// how far (in map units) does the player move each step/update
     rotSpeed : 3		// how much does the player rotate each step/update (in degrees)
-}
+};
 
 var mapWidth = 0;
 var mapHeight = 0;
-
-var miniMapScale = 8;
-
-var screenWidth = 800;
-var screenHeight = 600;
-
-var showOverlay = true;
-
-var stripWidth = 3;
-var fov = 60 * Math.PI / 180;
-
-var numRays = Math.ceil(screenWidth / stripWidth);
-var fovHalf = fov / 2;
-
-var viewDist = (screenWidth/2) / Math.tan((fov / 2));
-
 var twoPI = Math.PI * 2;
-
-
-
 var lastGameCycleTime = 0;
 var gameCycleDelay = 1000 / 30; // aim for 30 fps for game logic
 
@@ -170,7 +151,7 @@ function move(entity, timeDelta) {
     if (entity.rotDeg < -180) entity.rotDeg += 360;
     if (entity.rotDeg >= 180) entity.rotDeg -= 360;
 
-    var snap = (entity.rotDeg+360) % 90
+    var snap = (entity.rotDeg+360) % 90;
     if (snap < 2 || snap > 88) {
         entity.rotDeg = Math.round(entity.rotDeg / 90) * 90;
     }
@@ -192,8 +173,9 @@ function checkCollision(fromX, fromY, toX, toY, radius) {
         y : fromY
     };
 
-    if (toY < 0 || toY >= mapHeight || toX < 0 || toX >= mapWidth)
+    if (toY < 0 || toY >= mapHeight || toX < 0 || toX >= mapWidth) {
         return pos;
+    }
 
     var blockX = Math.floor(toX);
     var blockY = Math.floor(toY);
@@ -225,9 +207,10 @@ function checkCollision(fromX, fromY, toX, toY, radius) {
     }
 
     // is tile to the top-left a wall
+    var dx, dy;
     if (isBlocking(blockX-1,blockY-1) != 0 && !(blockTop != 0 && blockLeft != 0)) {
-        var dx = toX - blockX;
-        var dy = toY - blockY;
+        dx = toX - blockX;
+        dy = toY - blockY;
         if (dx*dx+dy*dy < radius*radius) {
             if (dx*dx > dy*dy)
                 toX = pos.x = blockX + radius;
@@ -237,8 +220,8 @@ function checkCollision(fromX, fromY, toX, toY, radius) {
     }
     // is tile to the top-right a wall
     if (isBlocking(blockX+1,blockY-1) != 0 && !(blockTop != 0 && blockRight != 0)) {
-        var dx = toX - (blockX+1);
-        var dy = toY - blockY;
+        dx = toX - (blockX+1);
+        dy = toY - blockY;
         if (dx*dx+dy*dy < radius*radius) {
             if (dx*dx > dy*dy)
                 toX = pos.x = blockX + 1 - radius;
@@ -248,8 +231,8 @@ function checkCollision(fromX, fromY, toX, toY, radius) {
     }
     // is tile to the bottom-left a wall
     if (isBlocking(blockX-1,blockY+1) != 0 && !(blockBottom != 0 && blockBottom != 0)) {
-        var dx = toX - blockX;
-        var dy = toY - (blockY+1);
+        dx = toX - blockX;
+        dy = toY - (blockY+1);
         if (dx*dx+dy*dy < radius*radius) {
             if (dx*dx > dy*dy)
                 toX = pos.x = blockX + radius;
@@ -259,13 +242,13 @@ function checkCollision(fromX, fromY, toX, toY, radius) {
     }
     // is tile to the bottom-right a wall
     if (isBlocking(blockX+1,blockY+1) != 0 && !(blockBottom != 0 && blockRight != 0)) {
-        var dx = toX - (blockX+1);
-        var dy = toY - (blockY+1);
+        dx = toX - (blockX+1);
+        dy = toY - (blockY+1);
         if (dx*dx+dy*dy < radius*radius) {
             if (dx*dx > dy*dy)
-                toX = pos.x = blockX + 1 - radius;
+                pos.x = blockX + 1 - radius;
             else
-                toY = pos.y = blockY + 1 - radius;
+                pos.y = blockY + 1 - radius;
         }
     }
 
@@ -273,20 +256,13 @@ function checkCollision(fromX, fromY, toX, toY, radius) {
 }
 
 function isBlocking(x,y) {
-
     // first make sure that we cannot move outside the boundaries of the level
     if (y < 0 || y >= mapHeight || x < 0 || x >= mapWidth)
         return true;
-
     var ix = Math.floor(x);
     var iy = Math.floor(y);
-
     // return true if the map block is not 0, ie. if there is a blocking wall.
     if (map[iy][ix] != 0)
         return true;
-
-    if (spriteMap[iy][ix] && spriteMap[iy][ix].block)
-        return true;
-
-    return false;
+    return !!(spriteMap[iy][ix] && spriteMap[iy][ix].block);
 }

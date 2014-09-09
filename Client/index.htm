@@ -198,14 +198,12 @@ var  nickname;
 
 function initNetwork()
 {
-
-
         // Check if nickname stored in localStorage
         if('localStorage' in window && localStorage.getItem('nickname')) {
             nickname = localStorage.getItem('nickname');
         } else {
             // If not in localStorage, prompt user for nickname
-            nickname = prompt('Please enter your nickname');
+            nickname = prompt('Please enter your nickname','losos'+(new Date().getSeconds()));
             if('localStorage' in window) {
                 localStorage.setItem('nickname', nickname);
             }
@@ -216,9 +214,9 @@ function initNetwork()
             $("chat").innerHTML += "<br/>" + nick +" joined the game!";
             setTimeout(clearChat,5000);
         });
-        socket.on('masterChanged', function(nick) {
-            $("chat").innerHTML += "<br/>" + nick + " now controls movements!";
-            if (nickname==nick)
+        socket.on('masterChanged', function(data) {
+            $("chat").innerHTML += "<br/>" + data.nick + " now controls movements!";
+            if (socket.id==data.id)
             {
                 //alert("you now control movements. Use buttons to move");
                 bindKeys();
