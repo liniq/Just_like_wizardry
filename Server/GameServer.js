@@ -28,6 +28,8 @@ server.get(/.*/, restify.serveStatic({
 var masterSocketId=null;
 io.sockets.on('connection', function (socket) {
     //console.log('socket connected');
+
+    socket.emit('id',socket.id);
     socket.on('join', function(nick){
         //console.log('join emitted');
         socket.username = nick;
@@ -35,7 +37,7 @@ io.sockets.on('connection', function (socket) {
         if (masterSocketId==null)
         {
             masterSocketId=socket.id;
-            io.sockets.emit('masterChanged',nick);
+            io.sockets.emit('masterChanged',{id: socket.id, nick:nick});
         }
     });
 
@@ -56,7 +58,7 @@ io.sockets.on('connection', function (socket) {
     });
 
     socket.on('move', function (data) {
-        if (socket.id ==masterSocketId)
+        if (socket.id == masterSocketId)
             io.sockets.emit('move', data);
     });
 });

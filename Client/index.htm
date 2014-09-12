@@ -214,15 +214,21 @@ function initNetwork()
                 localStorage.setItem('nickname', nickname);
             }
         }
+        socket.on('id', function(sockid) {
+            socket.id=sockid;
+            console.log("got id "+sockid);
+        });
 
         socket.emit('join', nickname);
+
         socket.on('join', function(nick) {
             $("chat").innerHTML += "<br/>" + nick +" joined the game!";
             setTimeout(clearChat,5000);
         });
         socket.on('masterChanged', function(data) {
             $("chat").innerHTML += "<br/>" + data.nick + " now controls movements!";
-            if (socket.id==data.id)
+            console.log("my id "+ socket.id + " data id " +data.id+ " eq=" +(socket.id == data.id));
+            if (socket.id == data.id)
             {
                 //alert("you now control movements. Use buttons to move");
                 bindKeys();
