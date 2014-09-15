@@ -16,12 +16,9 @@ var defaultAI = function (me,player,others,level){
     }
 };
 
-var lamp = {type:'lamp', objectType: 'WorldObject', isPenetratable: true};
-var guard = {type:'guard', objectType: 'KillableObject', totalHP:10, moveSpeed: 0.03, turnSpeed: 3, hostility:1, AI: defaultAI, battleAI: null};
-var donkey = {type:'donkey', objectType: 'KillableObject', totalHP:100, moveSpeed:0.01, turnSpeed:1, hostility: 1, AI: defaultAI, battleAI: null};
+exports.lamp = {type:'lamp', objectType: 'WorldObject', isPenetratable: true};
+exports.guard = {type:'guard', objectType: 'KillableObject', isPenetratable:false, totalHP:10, moveSpeed: 0.03, turnSpeed: 3, hostility:1, AI: defaultAI, battleAI: null};
+exports.donkey= {type:'donkey', objectType: 'KillableObject', totalHP:100, moveSpeed:0.01, turnSpeed:1, hostility: 1, AI: defaultAI, battleAI: null};
 
-exports.lamp = lamp;
-exports.guard = guard;
-exports.donkey= donkey;
 
 })(typeof global === "undefined" ? window : exports);

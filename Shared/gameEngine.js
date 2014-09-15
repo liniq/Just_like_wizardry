@@ -2,23 +2,20 @@
 /**
  * The game instance that's shared across all clients and the server
  */
- 
  //max fps
-Game.UPDATE_INTERVAL = Math.round(1000 / 30);
-Game.MAX_DELTA = 10000;
-Game.TARGET_LATENCY = 1000; // Maximum latency skew.
- 
 var Game = function(level, objectTypes, itemTypes) {
   this.GUID = 'some random shit here';
   this.state = {
-      objects:{},
-      timestamp: new Date()
+      objects:[],
+      timeStamp: (new Date()).valueOf()
   };
   this.isBattleMode = false;
   this.objectTypes = objectTypes;
   //this.itemTypes = itemTypes;
   this.level = level;
 
+  this.players ={};
+  this.actionArray = [];
     // Last used ID
   this.lastId = 1;
   this.callbacks = {};
@@ -27,30 +24,42 @@ var Game = function(level, objectTypes, itemTypes) {
   this.updateCount = 0;
   // Timer for the update loop.
   this.timer = null;
-  var id;
-  for (var position in level.positions){
-    if(position.type == 'Player'){
-        this.state.objects[0] = new Player(position);
-        this.state.objects[0].id = 0;
+  this.createObjects(level.positions);
+};
+
+    //game settings
+    Game.UPDATE_INTERVAL = Math.round(1000 / 30);
+    Game.MAX_DELTA = 10000;
+    Game.TARGET_LATENCY = 1000; // Maximum latency skew.
+    Game.BattleRoundInCycles = 300;
+    Game.minPlayers = 1;
+
+Game.prototype.createObjects = function(objects){
+    var otypes = this.objectTypes;
+    var id;
+    for (var i in objects){
+        if(objects[i].type == 'Player'){
+            this.state.objects[0] = new Player(objects[i]);
+            this.state.objects[0].id = 0;
+        }
+        else if (otypes[objects[i].type]){
+            id = this.newId_();
+            var objType= otypes[objects[i].type].objectType;
+            if (objType == 'KillableObject')
+                this.state.objects[id] = new KillableObject(otypes[objects[i].type]);
+            else if (objType == 'MovingObject')
+                this.state.objects[id] = new MovingObject(otypes[objects[i].type]);
+            else if (objType == 'ContainerObject')
+                this.state.objects[id] = new ContainerObject(otypes[objects[i].type]);
+            else if (objType == 'WorldObject')
+                this.state.objects[id] = new WorldObject(otypes[objects[i].type]);
+            this.state.objects[id].id = id;
+            this.state.objects[id].x = objects[i].x;
+            this.state.objects[id].y = objects[i].y;
+        }
+        else
+            throw "undefined type. Define type " +objects[i].type + " in objectTypes";
     }
-    else if (objectTypes[position.type]){
-        id = this.newId_();
-        var objType= objectTypes[position.type].objectType;
-        if (objType == 'KillableObject')
-            this.state.objects[id] = new KillableObject(objectTypes[position.type]);
-        else if (objType == 'MovingObject')
-            this.state.objects[id] = new MovingObject(objectTypes[position.type]);
-        else if (objType == 'ContainerObject')
-            this.state.objects[id] = new ContainerObject(objectTypes[position.type]);
-        else if (objType == 'WorldObject')
-            this.state.objects[id] = new WorldObject(objectTypes[position.type]);
-        this.state.objects[id].id = id;
-        this.state.objects[id].x = position.x;
-        this.state.objects[id].y = position.y;
-    }
-    else
-        throw "undefined type. Define type " +position.type + " in objectTypes";
-  }
 };
 
 var initiativeSorter = function (a,b){
@@ -72,27 +81,37 @@ var initiativeSorter = function (a,b){
 
 Game.prototype.computeState = function(delta) {
   var newState = {
-    objects: {},
+    objects: [],
     timeStamp: this.state.timeStamp + delta
   };
   var objects = this.state.objects;
+  var i, obj;
   // Generate a new state based on the old one
   if (!this.isBattleMode) {
+      //
+      if(this.actionArray.length>0) {
+          objects[0].turn = this.actionArray.last.turn;
+          objects[0].move = this.actionArray.last.move;
+          this.actionArray.clear();
+      }
       objects.sort(initiativeSorter);
-      for (var obj in objects) {
+      for (i in objects) {
+          obj = objects[i];
           if (this.objectTypes[obj.type] && this.objectTypes[obj.type].AI)
               this.objectTypes[obj.type].AI(obj,objects[0],objects, this.level);
 	  }
 	//sort newObjects by initiative
-    for (var newObj in objects) {
-		if (newObj.hasOwnProperty('speed'))
-			this.moveObject(delta, newObj, objects);
+    for (i in objects) {
+        obj = objects[i];
+		if (obj.hasOwnProperty('speed'))
+			this.moveObject(delta, obj, objects);
 	}
   }
   else {
-	for (var o in objects) {
-        if (this.objectTypes[o.type] && this.objectTypes[o.type].battleAI)
-            this.objectTypes[o.type].battleAI(o,objects[0],objects, this.level);
+	for (i in objects) {
+        obj = objects[i];
+        if (this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI)
+            this.objectTypes[obj.type].battleAI(obj,objects[0],objects, this.level);
 	}
   }
   newState.objects = objects;
@@ -102,7 +121,7 @@ Game.prototype.computeState = function(delta) {
 Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
 	// time timeDelta has passed since we moved last time. We should have moved after time gameCycleDelay,
     // so calculate how much we should multiply our movement to ensure game speed is constant
-    var mul = timeDelta / this.UPDATE_INTERVAL;
+    var mul = timeDelta / Game.UPDATE_INTERVAL;
     var moveStep = mul * entity.speed * entity.moveSpeed;	// entity will move this far along the current direction vector
     entity.angle += mul * entity.angle * entity.turnSpeed; // add rotation if entity is rotating
     entity.angle %= 360;
@@ -113,7 +132,7 @@ Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
     if (snap < 2 || snap > 88) {
         entity.angle = Math.round(entity.angle / 90) * 90;
     }
-	if (moveStep<0)
+	if (moveStep <= 0.0001)
 		return;
 	
 	var newPos = {x:0, y:0};
@@ -185,7 +204,7 @@ Game.prototype.checkMapCollision = function(entity, newPos) {
         }
     }
     // is tile to the bottom-left a wall
-    if (this.isBlocking(blockX-1,blockY+1) && !(blockBottom && blockBottom)) {
+    if (this.isMapBlocking(blockX-1,blockY+1) && !(blockBottom && blockLeft)) {
         dx = newPos.x - blockX;
         dy = newPos.y - (blockY+1);
         if (dx*dx+dy*dy < entity.r*entity.r) {
@@ -196,7 +215,7 @@ Game.prototype.checkMapCollision = function(entity, newPos) {
         }
     }
     // is tile to the bottom-right a wall
-    if (this.isBlocking(blockX+1,blockY+1) && !(blockBottom && blockRight)) {
+    if (this.isMapBlocking(blockX+1,blockY+1) && !(blockBottom && blockRight)) {
         dx = newPos.x - (blockX+1);
         dy = newPos.y - (blockY+1);
         if (dx*dx+dy*dy < entity.r*entity.r) {
@@ -209,14 +228,14 @@ Game.prototype.checkMapCollision = function(entity, newPos) {
     return pos;
 };
 
-Game.prototype.isMapBlocking = function(x,y,map) {
+Game.prototype.isMapBlocking = function(x,y) {
     // first make sure that we cannot move outside the boundaries of the level
     if (y < 0 || y >= this.level.height || x < 0 || x >= this.level.width)
         return true;
     var ix = Math.floor(x);
     var iy = Math.floor(y);
     // return true if the map block is not 0, ie. if there is a blocking wall.
-    return map[iy][ix] > 5;
+    return this.level.map[iy][ix] > 0;
 };
 
 Game.prototype.checkObjectCollision = function(entity, newPos, otherObjects){
@@ -224,8 +243,9 @@ Game.prototype.checkObjectCollision = function(entity, newPos, otherObjects){
 		return newPos;
 
 	newPos.r = entity.r;
-	for (var obj in otherObjects) {
-
+    var obj;
+	for (var i in otherObjects) {
+        obj = otherObjects[i];
 		if (obj.isPenetratable || obj.id == entity.id)
 			continue;
 		if (obj.intersects(newPos)) {
@@ -252,8 +272,11 @@ Game.prototype.update = function(timeStamp) {
   if (delta > Game.MAX_DELTA) {
     throw "Can't compute state so far in the future. Delta: " + delta;
   }
-  this.state = this.computeState(delta);
-  this.updateCount++;
+  //do not do anything if no players
+  if (this.state.length >= Game.minPlayers) {
+      this.state = this.computeState(delta);
+      this.updateCount++;
+  }
 };
 
 /**
@@ -281,25 +304,19 @@ Game.prototype.over = function() {
 /**
  * Called when a new player joins
  */
-Game.prototype.join = function(id) {
+Game.prototype.join = function(player) {
+    this.players[player.id] = player;
 };
 
 /**
- * Called when a player leaves
- */
-Game.prototype.leave = function(playerId) {
-  //delete this.state.objects[playerId];
+* Called when a player leaves
+*/
+Game.prototype.leave = function(id) {
+  delete this.players[id];
 };
 
 Game.prototype.getPlayerCount = function() {
-  var count = 0;
-  var objects = this.state.objects;
-  for (var o in objects) {
-    if (objects[o.id].type == 'player') {
-      count++;
-    }
-  }
-  return count;
+  return this.players.length;
 };
 
 /***********************************************
@@ -312,7 +329,7 @@ Game.prototype.getPlayerCount = function() {
  */
 Game.prototype.save = function() {
   var serialized = {
-    objects: {},
+    objects: [],
     timeStamp: this.state.timeStamp
   };
   for (var obj in this.state.objects) {
@@ -329,33 +346,20 @@ Game.prototype.save = function() {
  */
 Game.prototype.load = function(savedState) {
   //console.log(savedState.objects);
-  var objects = savedState.objects;
   this.state = {
-    objects: {},
+    objects: [],
     timeStamp: savedState.timeStamp.valueOf()
   };
-  for (var id in objects) {
-    var obj = objects[id];
-    // Depending on type, instantiate.
-    if (obj.type == 'blob') {
-      this.state.objects[obj.id] = new Blob(obj);
-    } else if (obj.type == 'player') {
-      this.state.objects[obj.id] = new Player(obj);
-    }
-    // Increment this.lastId
-    if (obj.id > this.lastId) {
-      this.lastId = obj.id;
-    }
-  }
+  this.createObjects(savedState.objects);
 };
 
 Game.prototype.objectExists = function(objId) {
   return this.state.objects[objId] !== undefined;
 };
 
-/***********************************************
- * Helper functions
- */
+///***********************************************
+// * Helper functions
+// */
 Game.prototype.callback_ = function(event, data) {
   var callback = this.callbacks[event];
   if (callback) {
@@ -367,6 +371,10 @@ Game.prototype.callback_ = function(event, data) {
 
 Game.prototype.newId_ = function() {
   return ++this.lastId;
+};
+
+Game.prototype.registerPlayerInput = function(input) {
+    this.actionArray.add(input);
 };
 
 Game.prototype.on = function(event, callback) {
@@ -385,7 +393,7 @@ var WorldObject = function(params) {
   this.x = params.x;
   this.y = params.y;
   this.r = params.radius || 0.2;
-  this.isPenetratable = params.isPenetratable || true;
+  this.isPenetratable = params.isPenetratable;
   
   this.type = params.type;
   
@@ -414,6 +422,9 @@ WorldObject.prototype.toJSON = function() {
 
 //represents any moving thing we can encounter
 var MovingObject = function(params) {
+    if (!params) {
+        return;
+    }
   this.angle = params.angle || 0;
   this.turnSpeed = params.turnSpeed || 0;
   this.moveSpeed = params.moveSpeed || 0;
@@ -423,8 +434,8 @@ var MovingObject = function(params) {
   this.turn = params.turn || 0;
   
   this.initiative = params.initiative || 0;
- 
-  this.objectType ='MovingObject';
+  if (!this.objectType)
+    this.objectType ='MovingObject';
   WorldObject.call(this,params);
 };
 MovingObject.prototype = new WorldObject;
@@ -432,8 +443,12 @@ MovingObject.prototype.constructor = MovingObject;
 
 //represents container (or corpse with loot)
 var ContainerObject = function (params) {
+    if (!params) {
+        return;
+    }
 	this.inventory = params.inventory || {};
-	this.objectType = 'ContainterObject';
+    if (!this.objectType)
+	  this.objectType = 'ContainterObject';
 	WorldObject.call(this,params);
 };
 ContainerObject.prototype = new WorldObject;
@@ -441,30 +456,37 @@ ContainerObject.prototype.constructor = ContainerObject;
 
 //represents a creature that can participate in battle. hostile or not
 var KillableObject = function (params){
+    if (!params) {
+        return;
+    }
 	this.hostility = params.hostility || 0;
 	this.totalHP = params.totalHP || 1;
 	this.currentHP = params.currentHP || this.totalHP;
 	this.sightDistance = params.sightDistance || 10;
-	this.meleeAttackRange = params.meleeAttackRange || this.r+0.3;
-    if (typeof params.isPenetratable === 'undefined')
+	if (typeof params.isPenetratable === 'undefined')
         params.isPenetratable=false;
 	
 	//battle mode props
     //todo spellpoints, characteristics, attack, class etc
-
-	this.objectType ='KillableObject';
+    if (!this.objectType)
+	  this.objectType ='KillableObject';
 	MovingObject.call(this, params);
+    this.meleeAttackRange = params.meleeAttackRange || (this.r+0.3);
 };
 KillableObject.prototype = new MovingObject;
 KillableObject.prototype.constructor = KillableObject;
 
 var Player = function (params){
+    if (!params) {
+        return;
+    }
 	this.hp1 = params.hp1;
 	this.hp2 = params.hp2;
 	this.hp3 = params.hp3;
 	this.hp4 = params.hp4;
 	
 	this.objectType ='Player';
+    this.type ='Player';
 	MovingObject.call(this, params);
 };
 Player.prototype = new MovingObject;

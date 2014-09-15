@@ -9,7 +9,7 @@ var cfCore = cfEnv.getAppEnv({name: pkg.name});
 var restify = require('restify');
 var server = restify.createServer();
 var io = require('socket.io').listen(server.server);
-var gameEnine = require('../shared/gameEngine');
+var gameEngine = require('../shared/gameEngine');
 var level = require('../shared/level');
 var objTypes = require('../shared/objectTypes');
 
@@ -26,15 +26,15 @@ server.get(/.*/, restify.serveStatic({
     default: 'index.htm'
 }));
 
-var game = new gameEnine.Game(level,objTypes,null);
-game.updateEvery(game.UPDATE_INTERVAL,0);
+var game = new gameEngine.Game(level,objTypes,null);
+game.updateEvery(gameEngine.Game.UPDATE_INTERVAL,0);
 
 //sockets stuff
 var masterSocketId=null;
 io.sockets.on('connection', function (socket) {
     //console.log('socket connected');
-
     socket.emit('id',socket.id);
+
     socket.on('join', function(nick){
         //console.log('join emitted');
         socket.username = nick;
