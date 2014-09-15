@@ -6,9 +6,11 @@ How to start the server part from WebStorm.
 4. Open our project, set project configuration (Run -> Edit Configurations) start script is server\GameServer.js, working directory is full path to Just_like_wizardry
 5. go to tools > Open Terminal, type "npm install"
 
-start server Run > Run or debug.
+6. start server Run > Run or debug.
 
-all steps performed only once !!!!
+7. open localhost:6001 (or check the port in console log in webstorm)
+
+all steps from 1 to 5 performed only once !!!!
 
 To get update from github:
 go to VCS->Git->Pull
