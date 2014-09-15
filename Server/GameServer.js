@@ -9,6 +9,9 @@ var cfCore = cfEnv.getAppEnv({name: pkg.name});
 var restify = require('restify');
 var server = restify.createServer();
 var io = require('socket.io').listen(server.server);
+var gameEnine = require('../shared/gameEngine');
+var level = require('../shared/level');
+var objTypes = require('../shared/objectTypes');
 
 server.use(restify.acceptParser(server.acceptable));
 server.use(restify.queryParser());
@@ -23,6 +26,8 @@ server.get(/.*/, restify.serveStatic({
     default: 'index.htm'
 }));
 
+var game = new gameEnine.Game(level,objTypes,null);
+game.updateEvery(game.UPDATE_INTERVAL,0);
 
 //sockets stuff
 var masterSocketId=null;
