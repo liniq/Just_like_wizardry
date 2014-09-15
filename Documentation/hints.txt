@@ -1,4 +1,20 @@
 How to start the server part from WebStorm.
 
-tools > Open Terminal > ???
+1. Install node.js on computer   http://nodejs.org/download/
+2. Configure WebStorm to use node JS   http://blog.jetbrains.com/webstorm/2014/01/getting-started-with-node-js-in-webstorm/
+3. Configure WebStorm to integrate with GitHub   http://www.jetbrains.com/webstorm/webhelp/registering-github-account-in-webstorm.html
+4. Open our project, set project configuration (Run -> Edit Configurations) start script is server\GameServer.js, working directory is full path to Just_like_wizardry
+5. go to tools > Open Terminal, type "npm install"
 
+start server Run > Run or debug.
+
+all steps performed only once !!!!
+
+To get update from github:
+go to VCS->Git->Pull
+
+To commit your changes locally:
+in webstorm, on the file or directory you rightClick->git->commit. (or CTRL+K)
+
+To Push your locally committed changes to GitHUb:
+VCS->Git->Push (or CTRL+SHIFT+K)
