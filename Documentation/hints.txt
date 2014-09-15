@@ -1,4 +1,6 @@
 How to start the server part from WebStorm.
 
+Download and install node.js
+
 tools > Open Terminal > ???
 
