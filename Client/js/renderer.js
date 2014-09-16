@@ -2,140 +2,116 @@
  * Created by Laur on 08.09.2014.
  */
 
-var numTextures = 4;
-var wallTextures = [
-    "img/textures/walls_1.png",
-    "img/textures/walls_2.png",
-    "img/textures/walls_3.png",
-    "img/textures/walls_4.png"
-];
+var Renderer = function(game,textures, viewCanvas,overlay) {
 
-var miniMapScale = 8;
-var screenWidth = 800;
-var screenHeight = 600;
-var showOverlay = true;
-var stripWidth = 3;
-var fov = 60 * Math.PI / 180;
+    this.game = game;
+    this.viewCanvas = viewCanvas;
+    this.overlay = overlay;
+    this.textures = textures;
+    this.player = game.state.objects[0];
 
-var numRays = Math.ceil(screenWidth / stripWidth);
-//var fovHalf = fov / 2;
+    this.screenWidth = 800;
+    this.screenHeight =600;
+    this.miniMapScale = 8;
+    this.showOverlay = true;
+    this.showMiniMap = true;
+    this.stripWidth = 3;
+    this.fov = 60 * Math.PI / 180;
 
-var viewDist = (screenWidth/2) / Math.tan((fov / 2));
+    this.spriteMap = [];
+    this.screenStrips = [];
+    this.fps = 0;
+    this.overlayText = "";
+    this.visibleSprites = [];
+    this.oldVisibleSprites = [];
 
-var userAgent = navigator.userAgent.toLowerCase();
-var isGecko = userAgent.indexOf("gecko") != -1 && userAgent.indexOf("safari") == -1;
+    this.lastRenderTime = new Date();
 
-// enable this to use a single image file containing all wall textures. This performs better in Firefox. Opera likes smaller images.
-var useSingleTexture = isGecko;
+    this.numRays = Math.ceil(this.screenWidth / this.stripWidth);
+    this.viewDistance = (this.screenWidth/2) / Math.tan((this.fov / 2));
 
+    this.initSprites();
+    game.on('update', this.renderCycle);
+};
 
-var screenStrips = [];
-var overlay;
-
-var fps = 0;
-var overlayText = "";
-
-
-var spriteMap;
-var visibleSprites = [];
-var oldVisibleSprites = [];
-
-function initSprites() {
-    spriteMap = [];
-    for (var y=0;y<map.length;y++) {
-        spriteMap[y] = [];
+Renderer.prototype.initSprites = function () {
+    for (var y=0; y < this.game.level.height; y++) {
+        this.spriteMap[y] = [];
     }
-
-    var screen = $("screen");
-
-    for (var i=0;i<mapItems.length;i++) {
-        var sprite = mapItems[i];
-        var itemType = itemTypes[sprite.type];
+    var ps = this.game.level.spritePositions;
+    for (var i=0; i < ps; i++) {
         var img = dc("img");
-        img.src = itemType.img;
+        img.src = this.textures.sprites[ps[i].type];
         img.style.display = "none";
         img.style.position = "absolute";
 
-        sprite.visible = false;
-        sprite.block = itemType.block;
-        sprite.img = img;
-
-        spriteMap[sprite.y][sprite.x] = sprite;
-        screen.appendChild(img);
+        this.spriteMap[ps[i].y][ps[i].x] = img;
+        this.viewCanvas.appendChild(img);
     }
 
-}
+};
 
-var lastRenderCycleTime = 0;
+Renderer.prototype.renderCycle = function () {
+    this.player.angleRad = this.player.angle * Math.PI / 180;
 
-function renderCycle() {
+    this.clearSprites();
+    this.castRays();
+    this.renderSprites();
+    this.renderWorldObjects();
 
-    updateMiniMap();
-
-    clearSprites();
-
-    castRays();
-
-    renderSprites();
-
-    renderEnemies();
+    if (this.showMiniMap) {
+        this.updateMiniMap();
+        this.drawMiniMap();
+    }
+    if (this.showOverlay) {
+        updateOverlay();
+    }
 
     // time since last rendering
     var now = new Date().getTime();
-    var timeDelta = now - lastRenderCycleTime;
-    var cycleDelay = 1000 / 30;
-    if (timeDelta > cycleDelay) {
-        cycleDelay = Math.max(1, cycleDelay - (timeDelta - cycleDelay))
-    }
-    lastRenderCycleTime = now;
-    setTimeout(renderCycle, cycleDelay);
+    var timeDelta = now - this.lastRenderCycleTime;
+    this.lastRenderCycleTime = now;
+    this.fps = 1000 / timeDelta;
 
-    fps = 1000 / timeDelta;
-    if (showOverlay) {
-        updateOverlay();
-    }
-}
-function clearSprites() {
+};
+
+Renderer.prototype.clearSprites = function() {
     // clear the visible sprites array but keep a copy in oldVisibleSprites for later.
     // also mark all the sprites as not visible so they can be added to visibleSprites again during raycasting.
-    oldVisibleSprites = [];
-    for (var i=0;i<visibleSprites.length;i++) {
-        var sprite = visibleSprites[i];
-        oldVisibleSprites[i] = sprite;
-        sprite.visible = false;
+    for (var i=0; i < this.visibleSprites.length;i++) {
+        this.oldVisibleSprites[i] = this.visibleSprites[i];
     }
-    visibleSprites = [];
-}
+    this.visibleSprites.clear();
+};
 
-function renderSprites() {
+Renderer.prototype.renderSprites = function () {
 
-    for (var i=0;i<visibleSprites.length;i++) {
-        var sprite = visibleSprites[i];
+    for (var i=0; i< this.visibleSprites.length; i++) {
+        var sprite = this.visibleSprites[i];
         var img = sprite.img;
         img.style.display = "block";
 
         // translate position to viewer space
-        var dx = sprite.x + 0.5 - player.x;
-        var dy = sprite.y + 0.5 - player.y;
+        var dx = sprite.x + 0.5 - this.player.x;
+        var dy = sprite.y + 0.5 - this.player.y;
 
         // distance to sprite
         var dist = Math.sqrt(dx*dx + dy*dy);
 
         // sprite angle relative to viewing angle
-        var spriteAngle = Math.atan2(dy, dx) - player.rot;
+        var spriteAngle = Math.atan2(dy, dx) - player.angleRad;
 
         // size of the sprite
-        var size = viewDist / (Math.cos(spriteAngle) * dist);
+        var size = this.viewDistance / (Math.cos(spriteAngle) * dist);
 
         if (size <= 0) continue;
 
         // x-position on screen
-        var x = Math.tan(spriteAngle) * viewDist;
-
-        img.style.left = (screenWidth/2 + x - size/2) + "px";
+        var x = Math.tan(spriteAngle) * this.viewDistance;
+        img.style.left = (this.screenWidth/2 + x - size/2) + "px";
 
         // y is constant since we keep all sprites at the same height and vertical position
-        img.style.top = ((screenHeight-size)/2)+"px";
+        img.style.top = ((this.screenHeight-size)/2)+"px";
 
         img.style.width = size + "px";
         img.style.height =  size + "px";
@@ -147,23 +123,21 @@ function renderSprites() {
     }
 
     // hide the sprites that are no longer visible
-    for (var i=0;i<oldVisibleSprites.length;i++) {
-        var sprite = oldVisibleSprites[i];
-        if (visibleSprites.indexOf(sprite) < 0) {
-            sprite.visible = false;
+    for (i=0; i < this.oldVisibleSprites.length;i++) {
+        sprite = this.oldVisibleSprites[i];
+        if (this.visibleSprites.indexOf(sprite) < 0) {
             sprite.img.style.display = "none";
         }
     }
+};
 
-}
-function renderEnemies() {
+Renderer.prototype.renderWorldObjects = function () {
+    for (var i=1 ;i < this.game.state.objects.length;i++) {
+        var obj = this.game.state.objects;
+        var img = this.textures.worldObjects[obj.type];
 
-    for (var i=0;i<enemies.length;i++) {
-        var enemy = enemies[i];
-        var img = enemy.img;
-
-        var dx = enemy.x - player.x;
-        var dy = enemy.y - player.y;
+        var dx = obj.x - this.player.x;
+        var dy = obj.y - this.player.y;
 
         var angle = Math.atan2(dy, dx) - player.rot;
 
@@ -238,8 +212,8 @@ function renderEnemies() {
 }
 
 function updateOverlay() {
-    overlay.innerHTML = "FPS: " + fps.toFixed(1) + "<br/>" + overlayText;
-    overlayText = "";
+    this.overlay.innerHTML = "FPS: " + this.fps.toFixed(1) + "<br/>" + this.overlayText;
+    this.overlayText = "";
 }
 
 

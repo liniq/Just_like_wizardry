@@ -275,8 +275,9 @@ Game.prototype.update = function(timeStamp) {
   //do not do anything if no players
   if (this.state.length >= Game.minPlayers) {
       this.state = this.computeState(delta);
-      this.updateCount++;
   }
+  this.updateCount++;
+    this.callback_('update');
 };
 
 /**

@@ -28,19 +28,26 @@ var map = [
 ];
 //	 0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
 
-var positions = [
+// initial world object positions
+var objectPositions = [
 	{type: 'Player', x: 10.5 , y: 6.5 },
-	{type: 'lamp', x: 10, y: 7 },
-	{type: 'lamp', x: 15, y: 7 },
 	{type: 'donkey', x: 12, y: 22 },
 	{type: 'guard', x : 25.5, y : 16.5 },
 	{type: 'guard', x : 17.5, y : 4.5 }
+];
+
+//sprites not belong to world objects. it is kind of decorations. They are always penetratable.
+// currently, only integer positions supported
+var spritePositions = [
+    {type: 'lamp', x: 10, y: 7 },
+    {type: 'lamp', x: 15, y: 7 }
 ];
 
 
 exports.map = map;
 exports.width = map[0].length;
 exports.height = map.length;
-exports.positions = positions;
+exports.positions = objectPositions;
+exports.spritePositions = spritePositions;
 
 })(typeof global === "undefined" ? window : exports);
