@@ -28,14 +28,3 @@ var textures = {
     }
 };
 
-//for sprite animation support
-var getWalkState = function(entity){
-    var wCycleTime = renderObjectTypes[entity.type].walkCycleTime;
-    //var states = renderObjectTypes[entity.type].totalStates;
-    var wSprites = renderObjectTypes[entity.type].numWalkSprites;
-    if (wCycleTime /*&& states */&& wSprites) {
-        return Math.floor((new Date() % wCycleTime) / (wCycleTime / wSprites)) + 1;
-    }
-    return 1;
-};
-

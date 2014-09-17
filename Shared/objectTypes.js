@@ -10,9 +10,9 @@ var defaultAI = function (me,player,others,level){
     if (dist > 4) {
         var angle = Math.atan2(dy, dx);
         me.angle = angle * 180 / Math.PI;
-        me.speed = 1;
+        me.move = 1;
     } else {
-        me.speed = 0;
+        me.move = 0;
     }
 };
 

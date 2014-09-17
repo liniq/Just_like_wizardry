@@ -103,7 +103,7 @@ Game.prototype.computeState = function(delta) {
 	//sort newObjects by initiative
     for (i in objects) {
         obj = objects[i];
-		if (obj.hasOwnProperty('speed'))
+		if (obj.move || obj.turn)
 			this.moveObject(delta, obj, objects);
 	}
   }

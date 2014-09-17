@@ -2,11 +2,10 @@
  * Created by Laur on 08.09.2014.
  */
 
-var Renderer = function(game,textures, viewCanvas,overlay) {
+var Renderer = function(game,textures, viewCanvas) {
 
     this.game = game;
     this.viewCanvas = viewCanvas;
-    this.overlay = overlay;
     this.textures = textures;
     this.player = game.state.objects[0];
 
@@ -18,20 +17,71 @@ var Renderer = function(game,textures, viewCanvas,overlay) {
     this.stripWidth = 3;
     this.fov = 60 * Math.PI / 180;
 
-    this.spriteMap = [];
     this.screenStrips = [];
+    this.spriteMap = [];
+
     this.fps = 0;
     this.overlayText = "";
     this.visibleSprites = [];
     this.oldVisibleSprites = [];
+    this.worldObjectsSprites = {};
 
     this.lastRenderTime = new Date();
 
     this.numRays = Math.ceil(this.screenWidth / this.stripWidth);
     this.viewDistance = (this.screenWidth/2) / Math.tan((this.fov / 2));
 
+    this.initScreen();
     this.initSprites();
+    this.initWorldObjects();
     game.on('update', this.renderCycle);
+};
+
+// just a few helper functions
+var $ = function(id) { return document.getElementById(id); };
+var dc = function(tag) { return document.createElement(tag); };
+
+// indexOf for IE. From: https://developer.mozilla.org/En/Core_JavaScript_1.5_Reference:Objects:Array:indexOf
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function(elt /*, from*/) {
+        var len = this.length;
+        var from = Number(arguments[1]) || 0;
+        from = (from < 0) ? Math.ceil(from) : Math.floor(from);
+        if (from < 0)
+            from += len;
+        for (; from < len; from++) {
+            if (from in this && this[from] === elt)
+                return from;
+        }
+        return -1;
+    };
+}
+
+Renderer.prototype.initScreen = function () {
+    for (var i=0;i<this.screenWidth;i+=this.stripWidth) {
+        var strip = dc("img");
+        strip.style.position = "absolute";
+        strip.style.height = "0px";
+        strip.style.left = strip.style.top = "0px";
+        strip.oldStyles = {
+            left : 0,
+            top : 0,
+            width : 0,
+            height : 0,
+            clip : "",
+            src : ""
+        };
+
+        this.screenStrips.push(strip);
+        this.viewCanvas.appendChild(strip);
+    }
+
+    // overlay div for adding text like fps count, etc.
+    this.overlay = dc("div");
+    this.overlay.id = "overlay";
+    this.overlay.style.display = this.showOverlay ? "block" : "none";
+    this.viewCanvas.appendChild(this.overlay);
+
 };
 
 Renderer.prototype.initSprites = function () {
@@ -48,7 +98,34 @@ Renderer.prototype.initSprites = function () {
         this.spriteMap[ps[i].y][ps[i].x] = img;
         this.viewCanvas.appendChild(img);
     }
+};
 
+Renderer.prototype.initWorldObjects = function () {
+    for (var i in this.game.state.objects) {
+        var obj = this.game.state.objects[i];
+        if (obj.type=='player')
+            continue;
+        var type = this.textures.worldObjects[obj.type];
+        var img = dc("img");
+        img.src = type.img;
+        img.style.display = "none";
+        img.style.position = "absolute";
+
+        obj.oldStyles = {
+            left : 0,
+            top : 0,
+            width : 0,
+            height : 0,
+            clip : "",
+            display : "none",
+            zIndex : 0
+        };
+
+        obj.img = img;
+        this.worldObjectsSprites[obj.id] = obj;
+
+        this.viewCanvas.appendChild(img);
+    }
 };
 
 Renderer.prototype.renderCycle = function () {
@@ -69,8 +146,8 @@ Renderer.prototype.renderCycle = function () {
 
     // time since last rendering
     var now = new Date().getTime();
-    var timeDelta = now - this.lastRenderCycleTime;
-    this.lastRenderCycleTime = now;
+    var timeDelta = now - this.lastRenderTime;
+    this.lastRenderTime = now;
     this.fps = 1000 / timeDelta;
 
 };
@@ -131,31 +208,46 @@ Renderer.prototype.renderSprites = function () {
     }
 };
 
+//for sprite animation support
+Renderer.prototype.getAnimationState = function(entity){
+    var wCycleTime = this.textures.worldObjects[entity.type].walkCycleTime;
+    //var states = this.textures.worldObjects[entity.type].totalStates;
+    var wSprites = this.textures.worldObjects[entity.type].numWalkSprites;
+    if (entity.move && wCycleTime /*&& states */&& wSprites) {
+        return Math.floor((new Date() % wCycleTime) / (wCycleTime / wSprites)) + 1;
+    }
+    return 1;
+};
+
 Renderer.prototype.renderWorldObjects = function () {
-    for (var i=1 ;i < this.game.state.objects.length;i++) {
-        var obj = this.game.state.objects;
-        var img = this.textures.worldObjects[obj.type];
+    for (var i in this.worldObjectsSprites) {
+        var obj = this.worldObjectsSprites[i];
+        // make sure object still exists
+        if (!this.game.state.objects[obj.id]) {
+            delete this.worldObjectsSprites[i];
+            continue;
+        }
+        var img = obj.img;
 
         var dx = obj.x - this.player.x;
         var dy = obj.y - this.player.y;
 
-        var angle = Math.atan2(dy, dx) - player.rot;
+        var angle =  Math.atan2(dy, dx) - player.angleRad;
 
         if (angle < -Math.PI) angle += 2*Math.PI;
         if (angle >= Math.PI) angle -= 2*Math.PI;
 
-        // is enemy in front of player? Maybe use the FOV value instead.
+        // is obj in front of player? Maybe use the FOV value instead.
+        var style = img.style;
+        var oldStyles = obj.oldStyles;
         if (angle > -Math.PI*0.5 && angle < Math.PI*0.5) {
             var distSquared = dx*dx + dy*dy;
             var dist = Math.sqrt(distSquared);
-            var size = viewDist / (Math.cos(angle) * dist);
+            var size = this.viewDistance / (Math.cos(angle) * dist);
 
             if (size <= 0) continue;
 
-            var x = Math.tan(angle) * viewDist;
-
-            var style = img.style;
-            var oldStyles = enemy.oldStyles;
+            var x = Math.tan(angle) * this.viewDistance;
 
             // height is equal to the sprite size
             if (size != oldStyles.height) {
@@ -164,21 +256,23 @@ Renderer.prototype.renderWorldObjects = function () {
             }
 
             // width is equal to the sprite size times the total number of states
-            var styleWidth = size * enemy.totalStates;
+            var states = this.textures.worldObjects[obj.type].totalStates || 1;
+            var styleWidth = size * states;
             if (styleWidth != oldStyles.width) {
                 style.width = styleWidth + "px";
                 oldStyles.width = styleWidth;
             }
 
             // top position is halfway down the screen, minus half the sprite height
-            var styleTop = ((screenHeight-size)/2);
+            var styleTop = ((this.screenHeight-size)/2);
             if (styleTop != oldStyles.top) {
                 style.top = styleTop + "px";
                 oldStyles.top = styleTop;
             }
 
+            var walkState = this.getAnimationState(obj);
             // place at x position, adjusted for sprite size and the current sprite state
-            var styleLeft = (screenWidth/2 + x - size/2 - size*enemy.state);
+            var styleLeft = (this.screenWidth/2 + x - size/2 - size*walkState);
             if (styleLeft != oldStyles.left) {
                 style.left = styleLeft + "px";
                 oldStyles.left = styleLeft;
@@ -190,26 +284,24 @@ Renderer.prototype.renderWorldObjects = function () {
                 oldStyles.zIndex = styleZIndex;
             }
 
-            var styleDisplay = "block";
-            if (styleDisplay != oldStyles.display) {
-                style.display = styleDisplay;
-                oldStyles.display = styleDisplay;
+            if ("block" != oldStyles.display) {
+                style.display = "block";
+                oldStyles.display = "block";
             }
 
-            var styleClip = "rect(0, " + (size*(enemy.state+1)) + ", " + size + ", " + (size*(enemy.state)) + ")";
+            var styleClip = "rect(0, " + (size*(walkState+1)) + ", " + size + ", " + (size*(walkState)) + ")";
             if (styleClip != oldStyles.clip) {
                 style.clip = styleClip;
                 oldStyles.clip = styleClip;
             }
         } else {
-            var styleDisplay = "none";
-            if (styleDisplay != enemy.oldStyles.display) {
-                img.style.display = styleDisplay;
-                enemy.oldStyles.display = styleDisplay;
+            if ("none" != oldStyles.display) {
+                img.style.display = "none";
+                oldStyles.display = "none";
             }
         }
     }
-}
+};
 
 function updateOverlay() {
     this.overlay.innerHTML = "FPS: " + this.fps.toFixed(1) + "<br/>" + this.overlayText;
@@ -220,19 +312,19 @@ function updateOverlay() {
 function castRays() {
     var stripIdx = 0;
 
-    for (var i=0;i<numRays;i++) {
+    for (var i=0;i<this.numRays;i++) {
         // where on the screen does ray go through?
-        var rayScreenPos = (-numRays/2 + i) * stripWidth;
+        var rayScreenPos = (-this.numRays/2 + i) * this.stripWidth;
 
         // the distance from the viewer to the point on the screen, simply Pythagoras.
-        var rayViewDist = Math.sqrt(rayScreenPos*rayScreenPos + viewDist*viewDist);
+        var rayViewDist = Math.sqrt(rayScreenPos*rayScreenPos + this.viewDistance*this.viewDistance);
 
         // the angle of the ray, relative to the viewing direction.
         // right triangle: a = sin(A) * c
         var rayAngle = Math.asin(rayScreenPos / rayViewDist);
 
         castSingleRay(
-                player.rot + rayAngle, 	// add the players viewing direction to get the angle in world space
+                player.angleRad + rayAngle, 	// add the players viewing direction to get the angle in world space
             stripIdx++
         );
     }
