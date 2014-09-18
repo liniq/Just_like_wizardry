@@ -17,7 +17,7 @@ var Game = function(level, objectTypes, itemTypes) {
   this.players ={};
   this.actionArray = [];
     // Last used ID
-  this.lastId = 1;
+  this.lastId = 0;
   this.callbacks = {};
 
   // Counter for the number of updates
@@ -80,9 +80,15 @@ var initiativeSorter = function (a,b){
 
 
 Game.prototype.computeState = function(delta) {
+
+  //do not do anything if no players
+//  if (this.state.length >= Game.minPlayers) {
+//      this.state.timestamp+=delta;
+//      return this.state;
+//  }
   var newState = {
-    objects: [],
-    timeStamp: this.state.timeStamp + delta
+      objects: [],
+      timeStamp: this.state.timeStamp + delta
   };
   var objects = this.state.objects;
   var i, obj;
@@ -90,9 +96,9 @@ Game.prototype.computeState = function(delta) {
   if (!this.isBattleMode) {
       //
       if(this.actionArray.length>0) {
-          objects[0].turn = this.actionArray.last.turn;
-          objects[0].move = this.actionArray.last.move;
-          this.actionArray.clear();
+          objects[0].turn = this.actionArray[this.actionArray.length-1].turn;
+          objects[0].move = this.actionArray[this.actionArray.length-1].move;
+          this.actionArray = [];
       }
       objects.sort(initiativeSorter);
       for (i in objects) {
@@ -122,8 +128,8 @@ Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
 	// time timeDelta has passed since we moved last time. We should have moved after time gameCycleDelay,
     // so calculate how much we should multiply our movement to ensure game speed is constant
     var mul = timeDelta / Game.UPDATE_INTERVAL;
-    var moveStep = mul * entity.speed * entity.moveSpeed;	// entity will move this far along the current direction vector
-    entity.angle += mul * entity.angle * entity.turnSpeed; // add rotation if entity is rotating
+    var moveStep = mul * entity.move * entity.moveSpeed;	// entity will move this far along the current direction vector
+    entity.angle += mul * entity.turn * entity.turnSpeed; // add rotation if entity is rotating
     entity.angle %= 360;
     if (entity.angle < -180) entity.angle += 360;
     if (entity.angle >= 180) entity.angle -= 360;
@@ -132,13 +138,14 @@ Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
     if (snap < 2 || snap > 88) {
         entity.angle = Math.round(entity.angle / 90) * 90;
     }
-	if (moveStep <= 0.0001)
+    entity.angleRad = entity.angle * Math.PI / 180;
+
+    if (moveStep <= 0.0001 && moveStep > -0.0001)
 		return;
 	
 	var newPos = {x:0, y:0};
-    var angleRad = entity.angle * Math.PI / 180;
-    newPos.x = entity.x + Math.cos(angleRad) * moveStep;	// calculate new entity position with simple trigonometry
-    newPos.y = entity.y + Math.sin(angleRad) * moveStep;
+    newPos.x = entity.x + Math.cos(entity.angleRad) * moveStep;	// calculate new entity position with simple trigonometry
+    newPos.y = entity.y + Math.sin(entity.angleRad) * moveStep;
 
     newPos = this.checkMapCollision(entity, newPos);
 	newPos = this.checkObjectCollision(entity, newPos, otherObjects);
@@ -272,10 +279,8 @@ Game.prototype.update = function(timeStamp) {
   if (delta > Game.MAX_DELTA) {
     throw "Can't compute state so far in the future. Delta: " + delta;
   }
-  //do not do anything if no players
-  if (this.state.length >= Game.minPlayers) {
-      this.state = this.computeState(delta);
-  }
+
+  this.state = this.computeState(delta);
   this.updateCount++;
     this.callback_('update');
 };
@@ -365,9 +370,9 @@ Game.prototype.callback_ = function(event, data) {
   var callback = this.callbacks[event];
   if (callback) {
     callback(data);
-  } else {
+  }/* else {
     throw "Warning: No callback defined!";
-  }
+  }*/
 };
 
 Game.prototype.newId_ = function() {
@@ -407,6 +412,12 @@ WorldObject.prototype.distanceFrom = function(anotherObject) {
   return Math.sqrt(Math.pow(this.x - anotherObject.x, 2) + Math.pow(this.y - anotherObject.y, 2));
 };
 
+WorldObject.prototype.angleTo = function(anotherObject) {
+    var dx = this.x - anotherObject.x;
+    var dy = this.y - anotherObject.y;
+  return Math.atan2(dy, dx);
+};
+
 WorldObject.prototype.intersects = function(anotherObject) {
   return this.distanceFrom(anotherObject) < anotherObject.r + this.r;
 };
@@ -429,6 +440,7 @@ var MovingObject = function(params) {
   this.angle = params.angle || 0;
   this.turnSpeed = params.turnSpeed || 0;
   this.moveSpeed = params.moveSpeed || 0;
+  this.angleRad = params.angleRad || 0;
   
   // from -1 to 1.
   this.move = params.move || 0;
@@ -489,6 +501,10 @@ var Player = function (params){
 	this.objectType ='Player';
     this.type ='Player';
 	MovingObject.call(this, params);
+
+    this.isPenetratable=false;
+    this.moveSpeed = 0.07;
+    this.turnSpeed = 3;
 };
 Player.prototype = new MovingObject;
 Player.prototype.constructor = Player;

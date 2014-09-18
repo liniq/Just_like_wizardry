@@ -3,7 +3,10 @@
 <title>Just like wizardry</title>
 <link rel="stylesheet" type="text/css" href="css/Styles.css">
 <script src="js/excanvas.js" type="text/javascript"></script>
-<script src="./game.js"></script>
+<script src="./level.js"></script>
+<script src="./objectTypes.js"></script>
+<script src="./gameEngine.js"></script>
+<script src="js/objectTExtures.js" type="text/javascript"></script>
 <script src="js/renderer.js" type="text/javascript"></script>
 <script src="/socket.io/socket.io.js" type="text/javascript"></script>
 </head>
@@ -85,16 +88,21 @@
 <div id="debug"></div>
 
 <script type="text/javascript">
-
+    var game = new Game(window.gameLevel,window.gameTypes);
+    var ren = new Renderer(game,textures,$('screen'));
 function init() {
-
 
     initNetwork();
 
-	drawMiniMap();
+    game.on('update', render);
+    //start
+    game.updateEvery(Game.UPDATE_INTERVAL,0);
 
-	gameCycle();
 
+}
+
+function render() {
+    ren.renderCycle();
 }
 
 var socket = io();
@@ -114,7 +122,7 @@ function initNetwork()
         }
         socket.on('id', function(sockid) {
             socket.id=sockid;
-            console.log("got id "+sockid);
+            //console.log("got id "+sockid);
         });
 
         socket.emit('join', nickname);
@@ -148,12 +156,14 @@ function initNetwork()
 
 
         socket.on('move', function(data) {
-            player.speed=data.s;
-            player.dir = data.d;
+            game.actionArray.push ({
+              turn: data.d,
+              move: data.s
+            });
             if (data.x) {
-                player.x = data.x;
-                player.y = data.y;
-                player.rotDeg = data.r;
+                ren.player.x = data.x;
+                ren.player.y = data.y;
+                ren.player.angle = data.r;
 
             }
         });
@@ -179,22 +189,22 @@ function bindKeys() {
 
 			case 38: // up, move player forward, ie. increase speed
 				//player.speed = 1;
-                    socket.emit('move', {s: 1, d: player.dir});
+                    socket.emit('move', {s: 1, d: ren.player.turn});
 				break;
 
             case 40: // down, move player backward, set negative speed
 				//player.speed = -1;
-                socket.emit('move', {s: -1, d: player.dir});
+                socket.emit('move', {s: -1, d: ren.player.turn});
 				break;
 
 			case 37: // left, rotate player left
 				//player.dir = -1;
-                socket.emit('move', {s: player.speed, d: -1});
+                socket.emit('move', {s: ren.player.move, d: -1});
 				break;
 
 			case 39: // right, rotate player right
 				//player.dir = 1;
-                socket.emit('move', {s: player.speed, d: 1});
+                socket.emit('move', {s: ren.player.move, d: 1});
 				break;
 		}
 	};
@@ -206,104 +216,15 @@ function bindKeys() {
 			case 38:
 			case 40:
 				//player.speed = 0;	// stop the player movement when up/down key is released
-                socket.emit('move', {s: 0, d: player.dir, x:player.x, y: player.y, r: player.rotDeg});
+                socket.emit('move', {s: 0, d: ren.player.turn, x:ren.player.x, y: ren.player.y, r: ren.player.angle});
 				break;
 			case 37:
 			case 39:
 				//player.dir = 0;
-                socket.emit('move', {s: player.speed, d: 0, x:player.x, y: player.y, r: player.rotDeg});
+                socket.emit('move', {s: ren.player.move, d: 0, x:ren.player.x, y: ren.player.y, r: ren.player.angle});
 				break;
 		}
 	};
-}
-
-function updateMiniMap() {
-
-	var miniMap = $("minimap");
-	var miniMapObjects = $("minimapobjects");
-
-	var objectCtx = miniMapObjects.getContext("2d");
-	miniMapObjects.width = miniMapObjects.width;
-
-	objectCtx.fillStyle = "red";
-	objectCtx.fillRect(		// draw a dot at the current player position
-		player.x * miniMapScale - 2, 
-		player.y * miniMapScale - 2,
-		4, 4
-	);
-
-	objectCtx.strokeStyle = "red";
-	objectCtx.beginPath();
-	objectCtx.moveTo(player.x * miniMapScale, player.y * miniMapScale);
-	objectCtx.lineTo(
-		(player.x + Math.cos(player.rot) * 4) * miniMapScale,
-		(player.y + Math.sin(player.rot) * 4) * miniMapScale
-	);
-	objectCtx.closePath();
-	objectCtx.stroke();
-
-	for (var i=0;i<enemies.length;i++) {
-		var enemy = enemies[i];
-
-		objectCtx.fillStyle = "blue";
-		objectCtx.fillRect(		// draw a dot at the enemy position
-			enemy.x * miniMapScale - 2, 
-			enemy.y * miniMapScale - 2,
-			4, 4
-		);
-	}
-}
-
-function drawMiniMap() {
-
-	// draw the topdown view minimap
-
-	var miniMap = $("minimap");			// the actual map
-	var miniMapCtr = $("minimapcontainer");		// the container div element
-	var miniMapObjects = $("minimapobjects");	// the canvas used for drawing the objects on the map (player character, etc)
-
-	miniMap.width = mapWidth * miniMapScale;	// resize the internal canvas dimensions 
-	miniMap.height = mapHeight * miniMapScale;	// of both the map canvas and the object canvas
-	miniMapObjects.width = miniMap.width;
-	miniMapObjects.height = miniMap.height;
-
-	var w = (mapWidth * miniMapScale) + "px" 	// minimap CSS dimensions
-	var h = (mapHeight * miniMapScale) + "px"
-	miniMap.style.width = miniMapObjects.style.width = miniMapCtr.style.width = w;
-	miniMap.style.height = miniMapObjects.style.height = miniMapCtr.style.height = h;
-
-	var ctx = miniMap.getContext("2d");
-
-	ctx.fillStyle = "white";
-	ctx.fillRect(0,0,miniMap.width,miniMap.height);
-
-	// loop through all blocks on the map
-	for (var y=0;y<mapHeight;y++) {
-		for (var x=0;x<mapWidth;x++) {
-
-			var wall = map[y][x];
-
-			if (wall > 0) { // if there is a wall block at this (x,y) ...
-				ctx.fillStyle = "rgb(200,200,200)";
-				ctx.fillRect(				// ... then draw a block on the minimap
-					x * miniMapScale,
-					y * miniMapScale,
-					miniMapScale,miniMapScale
-				);
-			}
-
-			if (spriteMap[y][x]) {
-				ctx.fillStyle = "rgb(100,200,100)";
-				ctx.fillRect(
-					x * miniMapScale + miniMapScale*0.25,
-					y * miniMapScale + miniMapScale*0.25,
-					miniMapScale*0.5,miniMapScale*0.5
-				);
-			}
-		}
-	}
-
-	updateMiniMap();
 }
 
 setTimeout(init, 1);

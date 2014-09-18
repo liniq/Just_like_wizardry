@@ -18,7 +18,13 @@ server.use(restify.queryParser());
 server.use(restify.gzipResponse());
 
 //serve static files
-server.get(/game.js/, restify.serveStatic({
+server.get(/gameEngine.js/, restify.serveStatic({
+    directory: './Shared'
+}));
+server.get(/level.js/, restify.serveStatic({
+    directory: './Shared'
+}));
+server.get(/objectTypes.js/, restify.serveStatic({
     directory: './Shared'
 }));
 server.get(/.*/, restify.serveStatic({
@@ -65,6 +71,7 @@ io.sockets.on('connection', function (socket) {
     socket.on('move', function (data) {
         if (socket.id == masterSocketId)
             io.sockets.emit('move', data);
+        console.log('move data '+data.d + " "+data.s);
     });
 });
 

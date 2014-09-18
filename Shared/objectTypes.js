@@ -21,4 +21,4 @@ exports.guard = {type:'guard', objectType: 'KillableObject', isPenetratable:fals
 exports.donkey= {type:'donkey', objectType: 'KillableObject', totalHP:100, moveSpeed:0.01, turnSpeed:1, hostility: 1, AI: defaultAI, battleAI: null};
 
 
-})(typeof global === "undefined" ? window : exports);
+})(typeof global === "undefined" ? window.gameTypes = {} : exports);
