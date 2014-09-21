@@ -44,7 +44,8 @@ io.sockets.on('connection', function (socket) {
     socket.on('join', function(nick){
         //console.log('join emitted');
         socket.username = nick;
-        io.sockets.emit('join',nick);
+        socket.emit('join',game.save());
+        socket.broadcast.emit('join',{nick: nick});
         if (masterSocketId==null)
         {
             masterSocketId=socket.id;
@@ -69,9 +70,12 @@ io.sockets.on('connection', function (socket) {
     });
 
     socket.on('move', function (data) {
-        if (socket.id == masterSocketId)
-            io.sockets.emit('move', data);
-        console.log('move data '+data.d + " "+data.s);
+        if (socket.id == masterSocketId){
+            game.registerPlayerInput({turn: data.t, move:data.m});
+            var pl  = game.state.objects[0];
+            io.sockets.emit('move', {m: data.m, t:data.t, x:pl.x, y: pl.y, a:pl.angle});
+        }
+
     });
 });
 

@@ -10,7 +10,7 @@ var Renderer = function(game,textures, viewCanvas) {
     this.player = game.state.objects[0];
 
     this.screenWidth = 800;
-    this.screenHeight =600;
+    this.screenHeight =500;
     this.miniMapScale = 8;
     this.showOverlay = true;
     this.showMiniMap = true;

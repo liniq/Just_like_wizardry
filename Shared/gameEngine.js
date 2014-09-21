@@ -6,7 +6,7 @@
 var Game = function(level, objectTypes, itemTypes) {
   this.GUID = 'some random shit here';
   this.state = {
-      objects:[],
+      objects:{},
       timeStamp: (new Date()).valueOf()
   };
   this.isBattleMode = false;
@@ -36,39 +36,47 @@ var Game = function(level, objectTypes, itemTypes) {
 
 Game.prototype.createObjects = function(objects){
     var otypes = this.objectTypes;
-    var id;
+    this.state.objects = {};
     for (var i in objects){
-        if(objects[i].type == 'Player'){
-            this.state.objects[0] = new Player(objects[i]);
-            this.state.objects[0].id = 0;
+        var o = objects[i];
+        if(o.type == 'Player'){
+            this.state.objects[0] = new Player(o);
+            this.state.objects[0].id =0;
         }
-        else if (otypes[objects[i].type]){
-            id = this.newId_();
-            var objType= otypes[objects[i].type].objectType;
-            if (objType == 'KillableObject')
-                this.state.objects[id] = new KillableObject(otypes[objects[i].type]);
-            else if (objType == 'MovingObject')
-                this.state.objects[id] = new MovingObject(otypes[objects[i].type]);
-            else if (objType == 'ContainerObject')
-                this.state.objects[id] = new ContainerObject(otypes[objects[i].type]);
-            else if (objType == 'WorldObject')
-                this.state.objects[id] = new WorldObject(otypes[objects[i].type]);
-            this.state.objects[id].id = id;
-            this.state.objects[id].x = objects[i].x;
-            this.state.objects[id].y = objects[i].y;
+        else if (otypes[o.type]){
+            var params;
+            //if id exists, means we restore saved state, otherwise take from types
+            if (o.id){
+                params = o;
+                if (this.lastId < o.id)
+                    this.lastId= o.id;
+            } else {
+                params = otypes[o.type];
+                params.id = this.newId_();
+                params.x = o.x;
+                params.y = o.y;
+            }
+            if (params.objectType == 'KillableObject')
+                this.state.objects[params.id] = new KillableObject(params);
+            else if (params.objectType == 'MovingObject')
+                this.state.objects[params.id] = new MovingObject(params);
+            else if (params.objectType == 'ContainerObject')
+                this.state.objects[params.id] = new ContainerObject(params);
+            else if (params.objectType == 'WorldObject')
+                this.state.objects[params.id] = new WorldObject(params);
         }
         else
-            throw "undefined type. Define type " +objects[i].type + " in objectTypes";
+            throw "undefined type. Define type " +o.type + " in objectTypes";
     }
 };
 
 var initiativeSorter = function (a,b){
     if(a.initiative && b.initiative)
-        return a.initiative - b.initiative;
+        return b.initiative - a.initiative;
     else if (a.initiative)
-        return 1;
-    else if (b.initiative)
         return -1;
+    else if (b.initiative)
+        return 1;
     return 0;
 };
 
@@ -80,48 +88,44 @@ var initiativeSorter = function (a,b){
 
 
 Game.prototype.computeState = function(delta) {
-
-  //do not do anything if no players
-//  if (this.state.length >= Game.minPlayers) {
-//      this.state.timestamp+=delta;
-//      return this.state;
-//  }
-  var newState = {
-      objects: [],
-      timeStamp: this.state.timeStamp + delta
-  };
-  var objects = this.state.objects;
-  var i, obj;
-  // Generate a new state based on the old one
-  if (!this.isBattleMode) {
-      //
-      if(this.actionArray.length>0) {
-          objects[0].turn = this.actionArray[this.actionArray.length-1].turn;
-          objects[0].move = this.actionArray[this.actionArray.length-1].move;
-          this.actionArray = [];
-      }
-      objects.sort(initiativeSorter);
-      for (i in objects) {
-          obj = objects[i];
-          if (this.objectTypes[obj.type] && this.objectTypes[obj.type].AI)
-              this.objectTypes[obj.type].AI(obj,objects[0],objects, this.level);
-	  }
-	//sort newObjects by initiative
-    for (i in objects) {
-        obj = objects[i];
-		if (obj.move || obj.turn)
-			this.moveObject(delta, obj, objects);
-	}
-  }
-  else {
-	for (i in objects) {
-        obj = objects[i];
-        if (this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI)
-            this.objectTypes[obj.type].battleAI(obj,objects[0],objects, this.level);
-	}
-  }
-  newState.objects = objects;
-  return newState;
+    var newState = {
+        objects: {},
+        timeStamp: this.state.timeStamp + delta
+    };
+    var objects = this.state.objects;
+    var i, obj;
+    var sortedByInitiative =[];
+    for(i in objects ) {
+        sortedByInitiative[i] = objects[i];
+    }
+    sortedByInitiative.sort(initiativeSorter);
+    //set player action
+    if (this.actionArray.length>0) {
+        objects[0].turn = this.actionArray[this.actionArray.length-1].turn; //turn
+        objects[0].move = this.actionArray[this.actionArray.length-1].move; // move
+        this.actionArray = [];
+    }
+    if (!this.isBattleMode) {
+        for (i in sortedByInitiative) {
+            obj = objects[sortedByInitiative[i].id];
+            // run AI
+            if (this.objectTypes[obj.type] && this.objectTypes[obj.type].AI)
+                this.objectTypes[obj.type].AI(obj,objects[0],objects, this.level);
+            //and move
+            if (obj.move || obj.turn)
+                this.moveObject(delta, obj, objects);
+	    }
+    }
+    else {
+        // battle mode
+	    for (i in objects) {
+            obj = objects[sortedByInitiative[i].id];
+            if (this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI)
+                this.objectTypes[obj.type].battleAI(obj,objects[0],objects, this.level);
+	    }
+    }
+    newState.objects = objects;
+    return newState;
 };
 
 Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
@@ -335,10 +339,11 @@ Game.prototype.getPlayerCount = function() {
  */
 Game.prototype.save = function() {
   var serialized = {
-    objects: [],
+    objects: {},
     timeStamp: this.state.timeStamp
   };
-  for (var obj in this.state.objects) {
+  for (var i in this.state.objects) {
+    var obj = this.state.objects[i];
     // Serialize to JSON!
     serialized.objects[obj.id] = obj.toJSON();
   }
@@ -353,7 +358,7 @@ Game.prototype.save = function() {
 Game.prototype.load = function(savedState) {
   //console.log(savedState.objects);
   this.state = {
-    objects: [],
+    objects: {},
     timeStamp: savedState.timeStamp.valueOf()
   };
   this.createObjects(savedState.objects);
@@ -380,7 +385,7 @@ Game.prototype.newId_ = function() {
 };
 
 Game.prototype.registerPlayerInput = function(input) {
-    this.actionArray.add(input);
+    this.actionArray.push(input);
 };
 
 Game.prototype.on = function(event, callback) {

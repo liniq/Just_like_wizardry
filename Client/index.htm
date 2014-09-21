@@ -89,14 +89,14 @@
 
 <script type="text/javascript">
     var game = new Game(window.gameLevel,window.gameTypes);
-    var ren = new Renderer(game,textures,$('screen'));
+    var ren;// = new Renderer(game,textures,$('screen'));
 function init() {
 
     initNetwork();
 
     game.on('update', render);
-    //start
-    game.updateEvery(Game.UPDATE_INTERVAL,0);
+    //start when receive join from server
+    //game.updateEvery(Game.UPDATE_INTERVAL,0);
 
 
 }
@@ -106,8 +106,7 @@ function render() {
 }
 
 var socket = io();
-var  nickname;
-
+var nickname;
 function initNetwork()
 {
         // Check if nickname stored in localStorage
@@ -127,9 +126,16 @@ function initNetwork()
 
         socket.emit('join', nickname);
 
-        socket.on('join', function(nick) {
-            $("chat").innerHTML += "<br/>" + nick +" joined the game!";
-            setTimeout(clearChat,5000);
+        socket.on('join', function(data) {
+            if (data.nick) {
+                $("chat").innerHTML += "<br/>" + data.nick +" joined the game!";
+                setTimeout(clearChat,5000);
+            } else if (data.objects) {
+                game.load(data);
+                //start
+                ren = new Renderer(game,textures,$('screen'));
+                game.updateEvery(Game.UPDATE_INTERVAL,0);
+            }
         });
         socket.on('masterChanged', function(data) {
             $("chat").innerHTML += "<br/>" + data.nick + " now controls movements!";
@@ -157,15 +163,14 @@ function initNetwork()
 
         socket.on('move', function(data) {
             game.actionArray.push ({
-              turn: data.d,
-              move: data.s
+              turn: data.t,
+              move: data.m
             });
-            if (data.x) {
-                ren.player.x = data.x;
-                ren.player.y = data.y;
-                ren.player.angle = data.r;
-
-            }
+            //var pl = game.state.objects[0];
+            //pl.x = data.x;
+            //pl.y = data.y;
+            //pl.angle = data.a;
+            //console.log("move "+ data.d + " " +data.s);
         });
 
 }
@@ -179,51 +184,53 @@ function clearChat()
 {
     $("chat").innerHTML ="";
 }
+
+var storedUserInput = {m:0, t:0};
+var minUserInputInterval = 50;
+var lastUserInputTS = 0;
+function sendUserInput(){
+    var delta = new Date().valueOf() - lastUserInputTS;
+    if (delta < minUserInputInterval) {
+        setTimeout(sendUserInput, delta);
+        return;
+    }
+    lastUserInputTS = new Date().valueOf();
+    socket.emit('move',storedUserInput);
+}
 // bind keyboard events to game functions (movement, etc)
 function bindKeys() {
-
 	document.onkeydown = function(e) {
 		e = e || window.event;
-
-		switch (e.keyCode) { // which key was pressed?
-
+        switch (e.keyCode) { // which key was pressed?
 			case 38: // up, move player forward, ie. increase speed
-				//player.speed = 1;
-                    socket.emit('move', {s: 1, d: ren.player.turn});
+                storedUserInput.m=1;
 				break;
-
             case 40: // down, move player backward, set negative speed
-				//player.speed = -1;
-                socket.emit('move', {s: -1, d: ren.player.turn});
+                storedUserInput.m=-1;
 				break;
-
 			case 37: // left, rotate player left
-				//player.dir = -1;
-                socket.emit('move', {s: ren.player.move, d: -1});
+                storedUserInput.t=-1;
 				break;
-
 			case 39: // right, rotate player right
-				//player.dir = 1;
-                socket.emit('move', {s: ren.player.move, d: 1});
+                storedUserInput.t=1;
 				break;
 		}
+        sendUserInput();
 	};
 
 	document.onkeyup = function(e) {
 		e = e || window.event;
-
-		switch (e.keyCode) {
+        switch (e.keyCode) {
 			case 38:
 			case 40:
-				//player.speed = 0;	// stop the player movement when up/down key is released
-                socket.emit('move', {s: 0, d: ren.player.turn, x:ren.player.x, y: ren.player.y, r: ren.player.angle});
+                storedUserInput.m=0;
 				break;
 			case 37:
 			case 39:
-				//player.dir = 0;
-                socket.emit('move', {s: ren.player.move, d: 0, x:ren.player.x, y: ren.player.y, r: ren.player.angle});
+                storedUserInput.t=0;
 				break;
 		}
+        sendUserInput();
 	};
 }
 
