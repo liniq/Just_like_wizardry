@@ -6,7 +6,7 @@
 <script src="./level.js"></script>
 <script src="./objectTypes.js"></script>
 <script src="./gameEngine.js"></script>
-<script src="js/objectTExtures.js" type="text/javascript"></script>
+<script src="js/objectTextures.js" type="text/javascript"></script>
 <script src="js/renderer.js" type="text/javascript"></script>
 <script src="/socket.io/socket.io.js" type="text/javascript"></script>
 </head>
@@ -166,13 +166,11 @@ function initNetwork()
               turn: data.t,
               move: data.m
             });
-            //var pl = game.state.objects[0];
-            //pl.x = data.x;
-            //pl.y = data.y;
-            //pl.angle = data.a;
-            //console.log("move "+ data.d + " " +data.s);
+            var pl = game.state.objects[0];
+            pl.x = data.x;
+            pl.y = data.y;
+            pl.angle = data.a;
         });
-
 }
 
 function requestControl()
@@ -186,16 +184,24 @@ function clearChat()
 }
 
 var storedUserInput = {m:0, t:0};
+var sentUserInput = {m:0, t:0};
 var minUserInputInterval = 50;
 var lastUserInputTS = 0;
 function sendUserInput(){
+    if (sentUserInput.m == storedUserInput.m && sentUserInput.t == storedUserInput.t) {
+        return;
+    }
     var delta = new Date().valueOf() - lastUserInputTS;
     if (delta < minUserInputInterval) {
         setTimeout(sendUserInput, delta);
         return;
     }
+    console.log("send userinput");
+    sentUserInput.m = storedUserInput.m;
+    sentUserInput.t = storedUserInput.t;
     lastUserInputTS = new Date().valueOf();
-    socket.emit('move',storedUserInput);
+    socket.emit('move',sentUserInput);
+
 }
 // bind keyboard events to game functions (movement, etc)
 function bindKeys() {
