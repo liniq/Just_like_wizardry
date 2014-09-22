@@ -20,3 +20,8 @@ in webstorm, on the file or directory you rightClick->git->commit. (or CTRL+K)
 
 To Push your locally committed changes to GitHUb:
 VCS->Git->Push (or CTRL+SHIFT+K)
+
+Bluemix data:
+api endpoint  https://api.ng.bluemix.net
+email  r.semenyk@gmail.com
+pass ask roman

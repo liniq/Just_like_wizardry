@@ -109,7 +109,7 @@ var socket = io();
 var nickname;
 function initNetwork()
 {
-        // Check if nickname stored in localStorage
+	    // Check if nickname stored in localStorage
         if('localStorage' in window && localStorage.getItem('nickname')) {
             nickname = localStorage.getItem('nickname');
         } else {

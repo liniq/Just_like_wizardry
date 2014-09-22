@@ -5,6 +5,7 @@
  //max fps
 var Game = function(level, objectTypes, itemTypes) {
   this.GUID = 'some random shit here';
+  this.serverOffset = 0;
   this.state = {
       objects:{},
       timeStamp: (new Date()).valueOf()
@@ -359,7 +360,7 @@ Game.prototype.load = function(savedState) {
   //console.log(savedState.objects);
   this.state = {
     objects: {},
-    timeStamp: savedState.timeStamp.valueOf()
+    timeStamp: (new Date()).valueOf()
   };
   this.createObjects(savedState.objects);
 };
