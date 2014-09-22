@@ -4,7 +4,7 @@ How to start the server part from WebStorm.
 2. Configure WebStorm to use node JS   http://blog.jetbrains.com/webstorm/2014/01/getting-started-with-node-js-in-webstorm/
 3. Configure WebStorm to integrate with GitHub   http://www.jetbrains.com/webstorm/webhelp/registering-github-account-in-webstorm.html
 4. Open our project, set project configuration (Run -> Edit Configurations) start script is server\GameServer.js, working directory is full path to Just_like_wizardry
-5. go to tools > Open Terminal, type "npm install"
+5. go to tools > Open Terminal, type "npm install" If error occurs, create empty folder C:\Users\*Username*\AppData\Roaming\npm
 6. go to File->Settings->JavaScript->libraries , check the box with "Node.Js Globals"
 
 7. start server Run > Run or debug.
