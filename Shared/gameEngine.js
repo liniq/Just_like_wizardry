@@ -164,11 +164,9 @@ Game.prototype.checkMapCollision = function(entity, newPos) {
         x : entity.x,
         y : entity.y
     };
-    
     if (this.isMapBlocking(newPos.x,newPos.y)) {
         return pos;
     }
-
     pos.x = newPos.x;
     pos.y = newPos.y;
 
@@ -253,19 +251,23 @@ Game.prototype.isMapBlocking = function(x,y) {
 Game.prototype.checkObjectCollision = function(entity, newPos, otherObjects){
 	if (entity.isPenetratable)
 		return newPos;
-
 	newPos.r = entity.r;
     var obj;
 	for (var i in otherObjects) {
         obj = otherObjects[i];
 		if (obj.isPenetratable || obj.id == entity.id)
 			continue;
-		if (obj.intersects(newPos)) {
-			var deltaDist = obj.distanceFrom(newPos) - obj.distanceFrom(entity);
-			var falseDist =  deltaDist - (obj.r+entity.r);
-			var ratio = falseDist/deltaDist;
-			newPos.x -= (newPos.x -entity.x)*ratio;
-			newPos.y -= (newPos.y -entity.y)*ratio;
+        if (obj.intersects(newPos)) {
+            var oldDist = obj.distanceFrom(entity); //this is bigger
+            var newDist = obj.distanceFrom(newPos);
+            var deltaDist = oldDist - newDist;
+            //part of delta distance after intersection
+			var illegalDist = (obj.r+entity.r) - newDist;
+			var ratio = illegalDist/deltaDist;
+            var dx = (newPos.x - entity.x);
+            var dy = (newPos.y - entity.y);
+            newPos.x -= dx*ratio;
+			newPos.y -= dy*ratio;
 		}
 	}
 	return newPos;
@@ -404,7 +406,7 @@ var WorldObject = function(params) {
   
   this.x = params.x;
   this.y = params.y;
-  this.r = params.radius || 0.2;
+  this.r = params.r || params.radius || 0.2;
   this.isPenetratable = params.isPenetratable;
   
   this.type = params.type;
