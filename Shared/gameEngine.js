@@ -258,16 +258,23 @@ Game.prototype.checkObjectCollision = function(entity, newPos, otherObjects){
 		if (obj.isPenetratable || obj.id == entity.id)
 			continue;
         if (obj.intersects(newPos)) {
-            var oldDist = obj.distanceFrom(entity); //this is bigger
-            var newDist = obj.distanceFrom(newPos);
-            var deltaDist = oldDist - newDist;
+            var ang = entity.angleTo(newPos) - entity.angleTo(obj);
+            if (Math.abs(ang)>1.25)
+                continue;
+            var deltaDist = obj.distanceFrom(entity) - obj.distanceFrom(newPos);
             //part of delta distance after intersection
-			var illegalDist = (obj.r+entity.r) - newDist;
+			var illegalDist = (obj.r+entity.r) - obj.distanceFrom(newPos);
 			var ratio = illegalDist/deltaDist;
             var dx = (newPos.x - entity.x);
             var dy = (newPos.y - entity.y);
-            newPos.x -= dx*ratio;
-			newPos.y -= dy*ratio;
+            var pointOfContact ={x: entity.x + (dx - dx*ratio), y: entity.y + (dy - dy*ratio)};
+            var newAng = (illegalDist*Math.sin(ang))/obj.r;
+            //if (entity.type=='Player' && obj.type=='donkey' && typeof global === 'undefined')
+            //    console.log('ang =' +ang + ', newang =' + newAng +
+            //        ' illegal='+illegalDist);
+            newPos.x = (obj.x + (pointOfContact.x-obj.x)*Math.cos(newAng)+ (pointOfContact.y-obj.y)*Math.sin(newAng));
+            newPos.y = (obj.y + (pointOfContact.y-obj.y)*Math.cos(newAng)-(pointOfContact.x-obj.x)*Math.sin(newAng));
+
 		}
 	}
 	return newPos;

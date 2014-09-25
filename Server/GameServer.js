@@ -9,9 +9,9 @@ var cfCore = cfEnv.getAppEnv({name: pkg.name});
 var restify = require('restify');
 var server = restify.createServer();
 var io = require('socket.io').listen(server.server);
-var gameEngine = require('../shared/gameEngine');
-var level = require('../shared/level');
-var objTypes = require('../shared/objectTypes');
+var gameEngine = require("../shared/gameEngine.js");
+var level = require("../shared/level.js");
+var objTypes = require("../shared/objectTypes.js");
 
 server.use(restify.acceptParser(server.acceptable));
 server.use(restify.queryParser());
@@ -74,6 +74,7 @@ io.sockets.on('connection', function (socket) {
             game.registerPlayerInput({turn: data.t, move:data.m});
             var pl  = game.state.objects[0];
             io.sockets.emit('move', {m: data.m, t:data.t, x:pl.x, y: pl.y, a:pl.angle});
+            //io.sockets.emit('path', process.cwd());
         }
 
     });
