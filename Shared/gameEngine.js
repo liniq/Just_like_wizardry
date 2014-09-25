@@ -152,8 +152,8 @@ Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
     newPos.x = entity.x + Math.cos(entity.angleRad) * moveStep;	// calculate new entity position with simple trigonometry
     newPos.y = entity.y + Math.sin(entity.angleRad) * moveStep;
 
+    newPos = this.checkObjectCollision(entity, newPos, otherObjects);
     newPos = this.checkMapCollision(entity, newPos);
-	newPos = this.checkObjectCollision(entity, newPos, otherObjects);
 
     entity.x = newPos.x; // set new position
     entity.y = newPos.y;

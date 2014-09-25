@@ -90,12 +90,13 @@ Renderer.prototype.initSprites = function () {
         this.spriteMap[y] = [];
     }
     var ps = this.game.level.spritePositions;
-    for (var i=0; i < ps; i++) {
+    for (var i in ps) {
         var img = dc("img");
         img.src = this.textures.sprites[ps[i].type];
         img.style.display = "none";
         img.visible = false;
         img.style.position = "absolute";
+        img.pos = {x:ps[i].x, y:ps[i].y};
 
         this.spriteMap[ps[i].y][ps[i].x] = img;
         this.viewCanvas.appendChild(img);
@@ -159,6 +160,7 @@ Renderer.prototype.clearSprites = function() {
     // also mark all the sprites as not visible so they can be added to visibleSprites again during raycasting.
     for (var i=0; i < this.visibleSprites.length;i++) {
         this.oldVisibleSprites[i] = this.visibleSprites[i];
+        this.oldVisibleSprites[i].visible = false;
     }
     this.visibleSprites = [];
 };
@@ -166,19 +168,18 @@ Renderer.prototype.clearSprites = function() {
 Renderer.prototype.renderSprites = function () {
 
     for (var i=0; i< this.visibleSprites.length; i++) {
-        var sprite = this.visibleSprites[i];
-        var img = sprite.img;
+        var img = this.visibleSprites[i];
         img.style.display = "block";
 
         // translate position to viewer space
-        var dx = sprite.x + 0.5 - this.player.x;
-        var dy = sprite.y + 0.5 - this.player.y;
+        var dx = img.pos.x + 0.5 - this.player.x;
+        var dy = img.pos.y + 0.5 - this.player.y;
 
         // distance to sprite
         var dist = Math.sqrt(dx*dx + dy*dy);
 
         // sprite angle relative to viewing angle
-        var spriteAngle = Math.atan2(dy, dx) - player.angleRad;
+        var spriteAngle = Math.atan2(dy, dx) - this.player.angleRad;
 
         // size of the sprite
         var size = this.viewDistance / (Math.cos(spriteAngle) * dist);
@@ -195,17 +196,17 @@ Renderer.prototype.renderSprites = function () {
         img.style.width = size + "px";
         img.style.height =  size + "px";
 
-        var dbx = sprite.x - player.x;
-        var dby = sprite.y - player.y;
+        var dbx = img.pos.x - this.player.x;
+        var dby = img.pos.y - this.player.y;
         var blockDist = dbx*dbx + dby*dby;
         img.style.zIndex = -Math.floor(blockDist*1000);
     }
 
     // hide the sprites that are no longer visible
     for (i=0; i < this.oldVisibleSprites.length;i++) {
-        sprite = this.oldVisibleSprites[i];
-        if (this.visibleSprites.indexOf(sprite) < 0) {
-            sprite.img.style.display = "none";
+        img = this.oldVisibleSprites[i];
+        if (this.visibleSprites.indexOf(img) < 0) {
+            img.style.display = "none";
         }
     }
 };
