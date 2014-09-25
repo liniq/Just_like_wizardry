@@ -9,9 +9,9 @@ var cfCore = cfEnv.getAppEnv({name: pkg.name});
 var restify = require('restify');
 var server = restify.createServer();
 var io = require('socket.io').listen(server.server);
-var gameEngine = require("../shared/gameEngine.js");
-var level = require("../shared/level.js");
-var objTypes = require("../shared/objectTypes.js");
+var gameEngine = require("../Shared_/gameEngine.js");
+var level = require("../Shared_/level.js");
+var objTypes = require("../Shared_/objectTypes.js");
 
 server.use(restify.acceptParser(server.acceptable));
 server.use(restify.queryParser());
@@ -19,13 +19,13 @@ server.use(restify.gzipResponse());
 
 //serve static files
 server.get(/gameEngine.js/, restify.serveStatic({
-    directory: './Shared'
+    directory: './Shared_'
 }));
 server.get(/level.js/, restify.serveStatic({
-    directory: './Shared'
+    directory: './Shared_'
 }));
 server.get(/objectTypes.js/, restify.serveStatic({
-    directory: './Shared'
+    directory: './Shared_'
 }));
 server.get(/.*/, restify.serveStatic({
     directory: './Client',
