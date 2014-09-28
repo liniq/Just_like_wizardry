@@ -2,186 +2,255 @@
  * Created by Laur on 08.09.2014.
  */
 
-var numTextures = 4;
-var wallTextures = [
-    "img/textures/walls_1.png",
-    "img/textures/walls_2.png",
-    "img/textures/walls_3.png",
-    "img/textures/walls_4.png"
-];
+var Renderer = function(game,textures, viewCanvas) {
 
-var miniMapScale = 8;
-var screenWidth = 800;
-var screenHeight = 600;
-var showOverlay = true;
-var stripWidth = 3;
-var fov = 60 * Math.PI / 180;
+    this.game = game;
+    this.viewCanvas = viewCanvas;
+    this.textures = textures;
+    this.player = game.state.objects[0];
 
-var numRays = Math.ceil(screenWidth / stripWidth);
-//var fovHalf = fov / 2;
+    this.screenWidth = 800;
+    this.screenHeight =500;
+    this.miniMapScale = 8;
+    this.showOverlay = true;
+    this.showMiniMap = true;
+    this.stripWidth = 3;
+    this.fov = 60 * Math.PI / 180;
 
-var viewDist = (screenWidth/2) / Math.tan((fov / 2));
+    this.screenStrips = [];
+    this.spriteMap = [];
 
-var userAgent = navigator.userAgent.toLowerCase();
-var isGecko = userAgent.indexOf("gecko") != -1 && userAgent.indexOf("safari") == -1;
+    this.fps = 0;
+    this.overlayText = "";
+    this.visibleSprites = [];
+    this.oldVisibleSprites = [];
+    this.worldObjectsSprites = {};
+    this.map = game.level.map;
 
-// enable this to use a single image file containing all wall textures. This performs better in Firefox. Opera likes smaller images.
-var useSingleTexture = isGecko;
+    this.lastRenderTime = new Date();
 
+    this.numRays = Math.ceil(this.screenWidth / this.stripWidth);
+    this.viewDistance = (this.screenWidth/2) / Math.tan((this.fov / 2));
 
-var screenStrips = [];
-var overlay;
+    this.initScreen();
+    this.initSprites();
+    this.initWorldObjects();
+};
 
-var fps = 0;
-var overlayText = "";
+// just a few helper functions
+var $ = function(id) { return document.getElementById(id); };
+var dc = function(tag) { return document.createElement(tag); };
+var twoPI = Math.PI * 2;
 
+// indexOf for IE. From: https://developer.mozilla.org/En/Core_JavaScript_1.5_Reference:Objects:Array:indexOf
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function(elt /*, from*/) {
+        var len = this.length;
+        var from = Number(arguments[1]) || 0;
+        from = (from < 0) ? Math.ceil(from) : Math.floor(from);
+        if (from < 0)
+            from += len;
+        for (; from < len; from++) {
+            if (from in this && this[from] === elt)
+                return from;
+        }
+        return -1;
+    };
+}
 
-var spriteMap;
-var visibleSprites = [];
-var oldVisibleSprites = [];
+Renderer.prototype.initScreen = function () {
+    for (var i=0;i<this.screenWidth;i+=this.stripWidth) {
+        var strip = dc("img");
+        strip.style.position = "absolute";
+        strip.style.height = "0px";
+        strip.style.left = strip.style.top = "0px";
+        strip.oldStyles = {
+            left : 0,
+            top : 0,
+            width : 0,
+            height : 0,
+            clip : "",
+            src : ""
+        };
 
-function initSprites() {
-    spriteMap = [];
-    for (var y=0;y<map.length;y++) {
-        spriteMap[y] = [];
+        this.screenStrips.push(strip);
+        this.viewCanvas.appendChild(strip);
     }
 
-    var screen = $("screen");
+    // overlay div for adding text like fps count, etc.
+    this.overlay = dc("div");
+    this.overlay.id = "overlay";
+    this.overlay.style.display = this.showOverlay ? "block" : "none";
+    this.viewCanvas.appendChild(this.overlay);
 
-    for (var i=0;i<mapItems.length;i++) {
-        var sprite = mapItems[i];
-        var itemType = itemTypes[sprite.type];
+};
+
+Renderer.prototype.initSprites = function () {
+    for (var y=0; y < this.game.level.height; y++) {
+        this.spriteMap[y] = [];
+    }
+    var ps = this.game.level.spritePositions;
+    for (var i in ps) {
         var img = dc("img");
-        img.src = itemType.img;
+        img.src = this.textures.sprites[ps[i].type];
+        img.style.display = "none";
+        img.visible = false;
+        img.style.position = "absolute";
+        img.pos = {x:ps[i].x, y:ps[i].y};
+
+        this.spriteMap[ps[i].y][ps[i].x] = img;
+        this.viewCanvas.appendChild(img);
+    }
+};
+
+Renderer.prototype.initWorldObjects = function () {
+    for (var i in this.game.state.objects) {
+        var obj = this.game.state.objects[i];
+        if (obj.type=='Player')
+            continue;
+        var type = this.textures.worldObjects[obj.type];
+        var img = dc("img");
+        img.src = type.img;
         img.style.display = "none";
         img.style.position = "absolute";
 
-        sprite.visible = false;
-        sprite.block = itemType.block;
-        sprite.img = img;
+        obj.oldStyles = {
+            left : 0,
+            top : 0,
+            width : 0,
+            height : 0,
+            clip : "",
+            display : "none",
+            zIndex : 0
+        };
 
-        spriteMap[sprite.y][sprite.x] = sprite;
-        screen.appendChild(img);
+        obj.img = img;
+        this.worldObjectsSprites[obj.id] = obj;
+
+        this.viewCanvas.appendChild(img);
     }
+};
 
-}
+Renderer.prototype.renderCycle = function () {
+    this.clearSprites();
+    this.castRays();
+    this.renderSky();
+    this.renderSprites();
+    this.renderWorldObjects();
 
-var lastRenderCycleTime = 0;
 
-function renderCycle() {
-
-    updateMiniMap();
-
-    clearSprites();
-
-    castRays();
-
-    renderSprites();
-
-    renderEnemies();
+    if (this.showMiniMap) {
+        this.updateMiniMap();
+        this.drawMiniMap();
+    }
+    if (this.showOverlay) {
+        this.updateOverlay();
+    }
 
     // time since last rendering
     var now = new Date().getTime();
-    var timeDelta = now - lastRenderCycleTime;
-    var cycleDelay = 1000 / 30;
-    if (timeDelta > cycleDelay) {
-        cycleDelay = Math.max(1, cycleDelay - (timeDelta - cycleDelay))
-    }
-    lastRenderCycleTime = now;
-    setTimeout(renderCycle, cycleDelay);
+    var timeDelta = now - this.lastRenderTime;
+    this.lastRenderTime = now;
+    this.fps = 1000 / timeDelta;
 
-    fps = 1000 / timeDelta;
-    if (showOverlay) {
-        updateOverlay();
-    }
-}
-function clearSprites() {
+};
+
+Renderer.prototype.clearSprites = function() {
     // clear the visible sprites array but keep a copy in oldVisibleSprites for later.
     // also mark all the sprites as not visible so they can be added to visibleSprites again during raycasting.
-    oldVisibleSprites = [];
-    for (var i=0;i<visibleSprites.length;i++) {
-        var sprite = visibleSprites[i];
-        oldVisibleSprites[i] = sprite;
-        sprite.visible = false;
+    for (var i=0; i < this.visibleSprites.length;i++) {
+        this.oldVisibleSprites[i] = this.visibleSprites[i];
+        this.oldVisibleSprites[i].visible = false;
     }
-    visibleSprites = [];
-}
+    this.visibleSprites = [];
+};
 
-function renderSprites() {
+Renderer.prototype.renderSprites = function () {
 
-    for (var i=0;i<visibleSprites.length;i++) {
-        var sprite = visibleSprites[i];
-        var img = sprite.img;
+    for (var i=0; i< this.visibleSprites.length; i++) {
+        var img = this.visibleSprites[i];
         img.style.display = "block";
 
         // translate position to viewer space
-        var dx = sprite.x + 0.5 - player.x;
-        var dy = sprite.y + 0.5 - player.y;
+        var dx = img.pos.x + 0.5 - this.player.x;
+        var dy = img.pos.y + 0.5 - this.player.y;
 
         // distance to sprite
         var dist = Math.sqrt(dx*dx + dy*dy);
 
         // sprite angle relative to viewing angle
-        var spriteAngle = Math.atan2(dy, dx) - player.rot;
+        var spriteAngle = Math.atan2(dy, dx) - this.player.angleRad;
 
         // size of the sprite
-        var size = viewDist / (Math.cos(spriteAngle) * dist);
+        var size = this.viewDistance / (Math.cos(spriteAngle) * dist);
 
         if (size <= 0) continue;
 
         // x-position on screen
-        var x = Math.tan(spriteAngle) * viewDist;
-
-        img.style.left = (screenWidth/2 + x - size/2) + "px";
+        var x = Math.tan(spriteAngle) * this.viewDistance;
+        img.style.left = (this.screenWidth/2 + x - size/2) + "px";
 
         // y is constant since we keep all sprites at the same height and vertical position
-        img.style.top = ((screenHeight-size)/2)+"px";
+        img.style.top = ((this.screenHeight-size)/2)+"px";
 
         img.style.width = size + "px";
         img.style.height =  size + "px";
 
-        var dbx = sprite.x - player.x;
-        var dby = sprite.y - player.y;
+        var dbx = img.pos.x - this.player.x;
+        var dby = img.pos.y - this.player.y;
         var blockDist = dbx*dbx + dby*dby;
         img.style.zIndex = -Math.floor(blockDist*1000);
     }
 
     // hide the sprites that are no longer visible
-    for (var i=0;i<oldVisibleSprites.length;i++) {
-        var sprite = oldVisibleSprites[i];
-        if (visibleSprites.indexOf(sprite) < 0) {
-            sprite.visible = false;
-            sprite.img.style.display = "none";
+    for (i=0; i < this.oldVisibleSprites.length;i++) {
+        img = this.oldVisibleSprites[i];
+        if (this.visibleSprites.indexOf(img) < 0) {
+            img.style.display = "none";
         }
     }
+};
 
-}
-function renderEnemies() {
+//for sprite animation support
+Renderer.prototype.getAnimationState = function(entity){
+    var wCycleTime = this.textures.worldObjects[entity.type].walkCycleTime;
+    //var states = this.textures.worldObjects[entity.type].totalStates;
+    var wSprites = this.textures.worldObjects[entity.type].numWalkSprites;
+    if (entity.move && wCycleTime /*&& states */&& wSprites) {
+        return Math.floor((new Date() % wCycleTime) / (wCycleTime / wSprites)) + 1;
+    }
+    return 0;
+};
 
-    for (var i=0;i<enemies.length;i++) {
-        var enemy = enemies[i];
-        var img = enemy.img;
+Renderer.prototype.renderWorldObjects = function () {
+    for (var i in this.worldObjectsSprites) {
+        var obj = this.worldObjectsSprites[i];
+        // make sure object still exists
+        if (!this.game.state.objects[obj.id]) {
+            delete this.worldObjectsSprites[i];
+            continue;
+        }
+        var img = obj.img;
 
-        var dx = enemy.x - player.x;
-        var dy = enemy.y - player.y;
+        var dx = obj.x - this.player.x;
+        var dy = obj.y - this.player.y;
 
-        var angle = Math.atan2(dy, dx) - player.rot;
+        var angle =  Math.atan2(dy, dx) - this.player.angleRad;
 
         if (angle < -Math.PI) angle += 2*Math.PI;
         if (angle >= Math.PI) angle -= 2*Math.PI;
 
-        // is enemy in front of player? Maybe use the FOV value instead.
+        // is obj in front of player? Maybe use the FOV value instead.
+        var style = img.style;
+        var oldStyles = obj.oldStyles;
         if (angle > -Math.PI*0.5 && angle < Math.PI*0.5) {
             var distSquared = dx*dx + dy*dy;
             var dist = Math.sqrt(distSquared);
-            var size = viewDist / (Math.cos(angle) * dist);
+            var size = this.viewDistance / (Math.cos(angle) * dist);
 
             if (size <= 0) continue;
 
-            var x = Math.tan(angle) * viewDist;
-
-            var style = img.style;
-            var oldStyles = enemy.oldStyles;
+            var x = Math.tan(angle) * this.viewDistance;
 
             // height is equal to the sprite size
             if (size != oldStyles.height) {
@@ -190,21 +259,23 @@ function renderEnemies() {
             }
 
             // width is equal to the sprite size times the total number of states
-            var styleWidth = size * enemy.totalStates;
+            var states = this.textures.worldObjects[obj.type].totalStates || 1;
+            var styleWidth = size * states;
             if (styleWidth != oldStyles.width) {
                 style.width = styleWidth + "px";
                 oldStyles.width = styleWidth;
             }
 
             // top position is halfway down the screen, minus half the sprite height
-            var styleTop = ((screenHeight-size)/2);
+            var styleTop = ((this.screenHeight-size)/2);
             if (styleTop != oldStyles.top) {
                 style.top = styleTop + "px";
                 oldStyles.top = styleTop;
             }
 
+            var walkState = this.getAnimationState(obj);
             // place at x position, adjusted for sprite size and the current sprite state
-            var styleLeft = (screenWidth/2 + x - size/2 - size*enemy.state);
+            var styleLeft = (this.screenWidth/2 + x - size/2 - size*walkState);
             if (styleLeft != oldStyles.left) {
                 style.left = styleLeft + "px";
                 oldStyles.left = styleLeft;
@@ -216,55 +287,53 @@ function renderEnemies() {
                 oldStyles.zIndex = styleZIndex;
             }
 
-            var styleDisplay = "block";
-            if (styleDisplay != oldStyles.display) {
-                style.display = styleDisplay;
-                oldStyles.display = styleDisplay;
+            if ("block" != oldStyles.display) {
+                style.display = "block";
+                oldStyles.display = "block";
             }
 
-            var styleClip = "rect(0, " + (size*(enemy.state+1)) + ", " + size + ", " + (size*(enemy.state)) + ")";
+            var styleClip = "rect(0, " + (size*(walkState+1)) + ", " + size + ", " + (size*(walkState)) + ")";
             if (styleClip != oldStyles.clip) {
                 style.clip = styleClip;
                 oldStyles.clip = styleClip;
             }
         } else {
-            var styleDisplay = "none";
-            if (styleDisplay != enemy.oldStyles.display) {
-                img.style.display = styleDisplay;
-                enemy.oldStyles.display = styleDisplay;
+            if ("none" != oldStyles.display) {
+                img.style.display = "none";
+                oldStyles.display = "none";
             }
         }
     }
-}
+};
 
-function updateOverlay() {
-    overlay.innerHTML = "FPS: " + fps.toFixed(1) + "<br/>" + overlayText;
-    overlayText = "";
-}
+Renderer.prototype.updateOverlay = function() {
+    this.overlay.innerHTML = "FPS: " + this.fps.toFixed(1) + "<br/>" + this.overlayText;
+    this.overlayText = "";
+};
 
 
-function castRays() {
+Renderer.prototype.castRays = function() {
     var stripIdx = 0;
 
-    for (var i=0;i<numRays;i++) {
+    for (var i=0;i<this.numRays;i++) {
         // where on the screen does ray go through?
-        var rayScreenPos = (-numRays/2 + i) * stripWidth;
+        var rayScreenPos = (-this.numRays/2 + i) * this.stripWidth;
 
         // the distance from the viewer to the point on the screen, simply Pythagoras.
-        var rayViewDist = Math.sqrt(rayScreenPos*rayScreenPos + viewDist*viewDist);
+        var rayViewDist = Math.sqrt(rayScreenPos*rayScreenPos + this.viewDistance*this.viewDistance);
 
         // the angle of the ray, relative to the viewing direction.
         // right triangle: a = sin(A) * c
         var rayAngle = Math.asin(rayScreenPos / rayViewDist);
 
-        castSingleRay(
-                player.rot + rayAngle, 	// add the players viewing direction to get the angle in world space
+        this.castSingleRay(
+                this.player.angleRad + rayAngle, 	// add the players viewing direction to get the angle in world space
             stripIdx++
         );
     }
-}
+};
 
-function castSingleRay(rayAngle, stripIdx) {
+Renderer.prototype.castSingleRay = function (rayAngle, stripIdx) {
 
     // first make sure the angle is between 0 and 360 degrees
     rayAngle %= twoPI;
@@ -303,26 +372,26 @@ function castSingleRay(rayAngle, stripIdx) {
     var dXVer = right ? 1 : -1; 	// we move either 1 map unit to the left or right
     var dYVer = dXVer * slope; 	// how much to move up or down
 
-    var x = right ? Math.ceil(player.x) : Math.floor(player.x);	// starting horizontal position, at one of the edges of the current map block
-    var y = player.y + (x - player.x) * slope;			// starting vertical position. We add the small horizontal step we just made, multiplied by the slope.
+    var x = right ? Math.ceil(this.player.x) : Math.floor(this.player.x);	// starting horizontal position, at one of the edges of the current map block
+    var y = this.player.y + (x - this.player.x) * slope;			// starting vertical position. We add the small horizontal step we just made, multiplied by the slope.
 
-    while (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
-        var wallX = (x + (right ? 0 : -1))>>0;
-        var wallY = (y)>>0;
+    while (x >= 0 && x < this.game.level.width && y >= 0 && y < this.game.level.height) {
+        wallX = (x + (right ? 0 : -1))>>0;
+        wallY = (y)>>0;
 
-        if (spriteMap[wallY][wallX] && !spriteMap[wallY][wallX].visible) {
-            spriteMap[wallY][wallX].visible = true;
-            visibleSprites.push(spriteMap[wallY][wallX]);
+        if (this.spriteMap[wallY][wallX] && !this.spriteMap[wallY][wallX].visible) {
+            this.spriteMap[wallY][wallX].visible = true;
+            this.visibleSprites.push(this.spriteMap[wallY][wallX]);
         }
 
         // is this point inside a wall block?
-        if (map[wallY][wallX] > 0) {
+        if (this.map[wallY][wallX] > 0) {
 
-            var distX = x - player.x;
-            var distY = y - player.y;
+            distX = x - this.player.x;
+            distY = y - this.player.y;
             dist = distX*distX + distY*distY;	// the distance from the player to this point, squared.
 
-            wallType = map[wallY][wallX]; // we'll remember the type of wall we hit for later
+            wallType = this.map[wallY][wallX]; // we'll remember the type of wall we hit for later
             textureX = y % 1;	// where exactly are we on the wall? textureX is the x coordinate on the texture that we'll use later when texturing the wall.
             if (!right) textureX = 1 - textureX; // if we're looking to the left side of the map, the texture should be reversed
 
@@ -347,24 +416,24 @@ function castSingleRay(rayAngle, stripIdx) {
     // we check if there we also found one in the earlier, vertical run. We'll know that if dist != 0.
     // If so, we only register this hit if this distance is smaller.
 
-    var slope = angleCos / angleSin;
+    slope = angleCos / angleSin;
     var dYHor = up ? -1 : 1;
     var dXHor = dYHor * slope;
-    var y = up ? Math.floor(player.y) : Math.ceil(player.y);
-    var x = player.x + (y - player.y) * slope;
+    y = up ? Math.floor(this.player.y) : Math.ceil(this.player.y);
+    x = this.player.x + (y - this.player.y) * slope;
 
-    while (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
-        var wallY = (y + (up ? -1 : 0))>>0;
-        var wallX = (x)>>0;
+    while (x >= 0 && x < this.game.level.width && y >= 0 && y < this.game.level.height) {
+        wallY = (y + (up ? -1 : 0))>>0;
+        wallX = (x)>>0;
 
-        if (spriteMap[wallY][wallX] && !spriteMap[wallY][wallX].visible) {
-            spriteMap[wallY][wallX].visible = true;
-            visibleSprites.push(spriteMap[wallY][wallX]);
+        if (this.spriteMap[wallY][wallX] && !this.spriteMap[wallY][wallX].visible) {
+            this.spriteMap[wallY][wallX].visible = true;
+            this.visibleSprites.push(this.spriteMap[wallY][wallX]);
         }
 
-        if (map[wallY][wallX] > 0) {
-            var distX = x - player.x;
-            var distY = y - player.y;
+        if (this.map[wallY][wallX] > 0) {
+            var distX = x - this.player.x;
+            var distY = y - this.player.y;
             var blockDist = distX*distX + distY*distY;
             if (!dist || blockDist < dist) {
                 dist = blockDist;
@@ -373,7 +442,7 @@ function castSingleRay(rayAngle, stripIdx) {
                 xWallHit = wallX;
                 yWallHit = wallY;
 
-                wallType = map[wallY][wallX];
+                wallType = this.map[wallY][wallX];
                 textureX = x % 1;
                 if (up) textureX = 1 - textureX;
 
@@ -388,55 +457,48 @@ function castSingleRay(rayAngle, stripIdx) {
     if (dist) {
         //drawRay(xHit, yHit);
 
-        var strip = screenStrips[stripIdx];
+        var strip = this.screenStrips[stripIdx];
 
         dist = Math.sqrt(dist);
 
         // use perpendicular distance to adjust for fish eye
         // distorted_dist = correct_dist / cos(relative_angle_of_ray)
-        dist = dist * Math.cos(player.rot - rayAngle);
+        dist = dist * Math.cos(this.player.angleRad - rayAngle);
 
         // now calc the position, height and width of the wall strip
 
         // "real" wall height in the game world is 1 unit, the distance from the player to the screen is viewDist,
         // thus the height on the screen is equal to wall_height_real * viewDist / dist
 
-        var height = Math.round(viewDist / dist);
+        var height = Math.round(this.viewDistance / dist);
 
         // width is the same, but we have to stretch the texture to a factor of stripWidth to make it fill the strip correctly
-        var width = height * stripWidth;
+        var width = height * this.stripWidth;
 
         // top placement is easy since everything is centered on the x-axis, so we simply move
         // it half way down the screen and then half the wall height back up.
-        var top = Math.round((screenHeight - height) / 2);
+        var top = Math.round((this.screenHeight - height) / 2);
 
         var imgTop = 0;
 
         var style = strip.style;
         var oldStyles = strip.oldStyles;
 
-        var styleHeight;
-        if (useSingleTexture) {
-            // then adjust the top placement according to which wall texture we need
-            imgTop = (height * (wallType-1))>>0;
-            var styleHeight = (height * numTextures)>>0;
-        } else {
-            var styleSrc = wallTextures[wallType-1];
-            if (oldStyles.src != styleSrc) {
-                strip.src = styleSrc;
-                oldStyles.src = styleSrc
-            }
-            var styleHeight = height;
+        var styleSrc = this.textures.walls[wallType];
+        if (oldStyles.src != styleSrc) {
+            strip.src = styleSrc;
+            oldStyles.src = styleSrc
         }
 
+        var styleHeight = height;
         if (oldStyles.height != styleHeight) {
             style.height = styleHeight + "px";
             oldStyles.height = styleHeight
         }
 
         var texX = Math.round(textureX*width);
-        if (texX > width - stripWidth)
-            texX = width - stripWidth;
+        if (texX > width - this.stripWidth)
+            texX = width - this.stripWidth;
         texX += (wallIsShaded ? width : 0);
 
         var styleWidth = (width*2)>>0;
@@ -451,20 +513,20 @@ function castSingleRay(rayAngle, stripIdx) {
             oldStyles.top = styleTop;
         }
 
-        var styleLeft = stripIdx*stripWidth - texX;
+        var styleLeft = stripIdx*this.stripWidth - texX;
         if (oldStyles.left != styleLeft) {
             style.left = styleLeft + "px";
             oldStyles.left = styleLeft;
         }
 
-        var styleClip = "rect(" + imgTop + ", " + (texX + stripWidth)  + ", " + (imgTop + height) + ", " + texX + ")";
+        var styleClip = "rect(" + imgTop + ", " + (texX + this.stripWidth)  + ", " + (imgTop + height) + ", " + texX + ")";
         if (oldStyles.clip != styleClip) {
             style.clip = styleClip;
             oldStyles.clip = styleClip;
         }
 
-        var dwx = xWallHit - player.x;
-        var dwy = yWallHit - player.y;
+        var dwx = xWallHit - this.player.x;
+        var dwy = yWallHit - this.player.y;
         var wallDist = dwx*dwx + dwy*dwy;
         var styleZIndex = -(wallDist*1000)>>0;
         if (styleZIndex != oldStyles.zIndex) {
@@ -474,22 +536,108 @@ function castSingleRay(rayAngle, stripIdx) {
 
     }
 
-}
+};
+var skyOffConst = -2000 / Math.PI;
+Renderer.prototype.renderSky = function() {
+    var skyOff = parseInt((this.player.angleRad + Math.PI/2 ) * skyOffConst);
+    // Don't put the sky in the frame array, because that's too slow.  Instead, keep it separate and just change the offset
+    $("ceiling").style.backgroundPosition = skyOff + "px 0px";
+};
 
-function drawRay(rayX, rayY) {
+
+Renderer.prototype.drawMiniMap = function () {
+
+    // draw the topdown view minimap
+    var miniMap = $("minimap");			// the actual map
+    var miniMapCtr = $("minimapcontainer");		// the container div element
+    var miniMapObjects = $("minimapobjects");	// the canvas used for drawing the objects on the map (player character, etc)
+
+    miniMap.width = this.game.level.width * this.miniMapScale;	// resize the internal canvas dimensions
+    miniMap.height = this.game.level.height * this.miniMapScale;	// of both the map canvas and the object canvas
+    miniMapObjects.width = miniMap.width;
+    miniMapObjects.height = miniMap.height;
+
+    miniMap.style.width = miniMapObjects.style.width = miniMapCtr.style.width = (miniMap.width + "px");
+    miniMap.style.height = miniMapObjects.style.height = miniMapCtr.style.height = (miniMap.height + "px");
+
+    var ctx = miniMap.getContext("2d");
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,miniMap.width, miniMap.height);
+
+    // loop through all blocks on the map
+    for (var y=0; y < this.game.level.height; y++) {
+        for (var x=0; x<this.game.level.width; x++) {
+
+            var wall = this.map[y][x];
+
+            if (wall > 0) { // if there is a wall block at this (x,y) ...
+                ctx.fillStyle = "rgb(200,200,200)";
+                ctx.fillRect(				// ... then draw a block on the minimap
+                        x * this.miniMapScale,
+                        y * this.miniMapScale,
+                    this.miniMapScale,this.miniMapScale
+                );
+            }
+
+            if (this.spriteMap[y][x]) {
+                ctx.fillStyle = "rgb(100,200,100)";
+                ctx.fillRect(
+                        x * this.miniMapScale + this.miniMapScale*0.25,
+                        y * this.miniMapScale + this.miniMapScale*0.25,
+                        this.miniMapScale*0.5,this.miniMapScale*0.5
+                );
+            }
+        }
+    }
+
+    this.updateMiniMap();
+};
+
+Renderer.prototype.updateMiniMap = function() {
+
     var miniMapObjects = $("minimapobjects");
+
     var objectCtx = miniMapObjects.getContext("2d");
 
-    objectCtx.strokeStyle = "rgba(0,100,0,0.3)";
-    objectCtx.lineWidth = 0.5;
+    objectCtx.strokeStyle = "red";
     objectCtx.beginPath();
-    objectCtx.moveTo(player.x * miniMapScale, player.y * miniMapScale);
+    objectCtx.moveTo(this.player.x * this.miniMapScale, this.player.y * this.miniMapScale);
     objectCtx.lineTo(
-            rayX * miniMapScale,
-            rayY * miniMapScale
+            (this.player.x + Math.cos(this.player.angleRad) * 4) * this.miniMapScale,
+            (this.player.y + Math.sin(this.player.angleRad) * 4) * this.miniMapScale
     );
     objectCtx.closePath();
     objectCtx.stroke();
-}
+
+    var objects = this.game.state.objects;
+    for (var i in objects) {
+        var obj = objects[i];
+
+        objectCtx.fillStyle = obj.type=='Player'? "red":"blue";
+        objectCtx.fillRect(		// draw a dot at the enemy position
+                obj.x * this.miniMapScale - 2,
+                obj.y * this.miniMapScale - 2,
+            4, 4
+        );
+    }
+};
+
+Renderer.prototype.constructor = Renderer;
+//function drawRay(rayX, rayY) {
+//    var miniMapObjects = $("minimapobjects");
+//    var objectCtx = miniMapObjects.getContext("2d");
+//
+//    objectCtx.strokeStyle = "rgba(0,100,0,0.3)";
+//    objectCtx.lineWidth = 0.5;
+//    objectCtx.beginPath();
+//    objectCtx.moveTo(player.x * miniMapScale, player.y * miniMapScale);
+//    objectCtx.lineTo(
+//            rayX * miniMapScale,
+//            rayY * miniMapScale
+//    );
+//    objectCtx.closePath();
+//    objectCtx.stroke();
+//}
 
 

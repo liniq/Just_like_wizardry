@@ -46,7 +46,7 @@ div#ceiling {
     position : absolute;
     width : 800px;
     height : 300px;
-    background: url(../img/textures/sky.png) no-repeat;
+    background: url(../img/textures/sky.jpg) repeat-x;
     z-index : -10000000;
 }
 

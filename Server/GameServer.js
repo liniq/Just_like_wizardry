@@ -9,17 +9,23 @@ var cfCore = cfEnv.getAppEnv({name: pkg.name});
 var restify = require('restify');
 var server = restify.createServer();
 var io = require('socket.io').listen(server.server);
-var gameEngine = require('../shared/gameEngine');
-var level = require('../shared/level');
-var objTypes = require('../shared/objectTypes');
+var gameEngine = require("../Shared_/gameEngine.js");
+var level = require("../Shared_/level.js");
+var objTypes = require("../Shared_/objectTypes.js");
 
 server.use(restify.acceptParser(server.acceptable));
 server.use(restify.queryParser());
 server.use(restify.gzipResponse());
 
 //serve static files
-server.get(/game.js/, restify.serveStatic({
-    directory: './Shared'
+server.get(/gameEngine.js/, restify.serveStatic({
+    directory: './Shared_'
+}));
+server.get(/level.js/, restify.serveStatic({
+    directory: './Shared_'
+}));
+server.get(/objectTypes.js/, restify.serveStatic({
+    directory: './Shared_'
 }));
 server.get(/.*/, restify.serveStatic({
     directory: './Client',
@@ -38,7 +44,8 @@ io.sockets.on('connection', function (socket) {
     socket.on('join', function(nick){
         //console.log('join emitted');
         socket.username = nick;
-        io.sockets.emit('join',nick);
+        socket.emit('join',game.save());
+        socket.broadcast.emit('join',{nick: nick});
         if (masterSocketId==null)
         {
             masterSocketId=socket.id;
@@ -63,8 +70,13 @@ io.sockets.on('connection', function (socket) {
     });
 
     socket.on('move', function (data) {
-        if (socket.id == masterSocketId)
-            io.sockets.emit('move', data);
+        if (socket.id == masterSocketId){
+            game.registerPlayerInput({turn: data.t, move:data.m});
+            var pl  = game.state.objects[0];
+            io.sockets.emit('move', {m: data.m, t:data.t, x:pl.x, y: pl.y, a:pl.angle});
+            //io.sockets.emit('path', process.cwd());
+        }
+
     });
 });
 
