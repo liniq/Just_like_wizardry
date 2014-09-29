@@ -80,6 +80,22 @@ div#ceiling {
     margin-right: 10px;
 }
 
+#party .master .portret {
+	border: 2px solid orange;
+	box-shadow: 0px 2px 5px 0px rgba(50, 50, 50, 0.75);
+}
+
+#party .portret {
+	border: 2px solid grey;
+	box-shadow: 0px 2px 5px 0px rgba(50, 50, 50, 0.75);
+}
+
+#party .noconnect .portret {
+	border: 2px solid red;
+	box-shadow: 0px 1px 5px 1px rgba(150, 50, 50, 0.8);
+	opacity: 0.3;
+	filter: alpha(opacity=30);
+}
 
 #ui {
     z-index: 110000000;
@@ -150,4 +166,21 @@ div#ceiling {
     display: block;
     width: 200px;
     height: 100px;
+	padding: 10px;
+	font-size: 13px
 }
+
+#chat .red {
+	color: #ff0000
+}
+
+#chat .blue {
+	color:#6666ff
+}
+
+#chat .green {
+	color:#66cc33
+}
+
+	
+	
