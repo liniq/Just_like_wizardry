@@ -21,13 +21,17 @@
 		<canvas id="minimapobjects"></canvas>
 	</div>
 	<div id="choose">
-		<span class="cyc">Choose your character</span>
+        <br /><br /><span class="cyc">Choose your character or <a style="text-decoration: underline; cursor: pointer" onclick="$('choose').style.display='none'; return false;">spectate</a></span><br /><br /><br /><br />
+        <span>Your Nick: </span><input type="text" id="nickname" /><br /><br />
 			<!-- Место для морд персонажей -->
-		<a id="ready" href="#">Join game!</a>
+        <img id="Zombotron" class="enabledmorda" src="img/templar_assassin_hphover.png" alt="Zombotron" />
+        <img id="Lososo" class="enabledmorda" src="img/keeper_of_the_light_hphover.png" alt="Lososo" />
+        <img id="WarGay" class="enabledmorda" src="img/life_stealer_hphover.png" alt="WarGay" />
+        <img id="PabloPicasso" class="enabledmorda" src="img/omniknight_hphover.png" alt="PabloPicasso" />
 	</div>
 	
     <span id="chat"></span>
-	
+    <span id="playersinfo"></span>
 	<div id="party">
 	    <div class="one left master">
 			<span id="playername2" class="name">Laur</span> <span id="playerhp2">hp: 4</span><br>
@@ -82,12 +86,12 @@
 			</div>
 			
 			<div class="ready right">
-				<a id="ready" class="yel" href="#">READY!</a>
+				<a class="yel" href="#">READY!</a>
 				 
 			</div>
 		</div>
 	</div>
-		
+
 </div>
 
 
@@ -97,15 +101,10 @@
 <script type="text/javascript">
     var game = new Game(window.gameLevel,window.gameTypes);
     var ren;// = new Renderer(game,textures,$('screen'));
+    var spectators =0;
 function init() {
-
     initNetwork();
-
     game.on('update', render);
-    //start when receive join from server
-    //game.updateEvery(Game.UPDATE_INTERVAL,0);
-
-
 }
 
 function render() {
@@ -114,42 +113,61 @@ function render() {
 
 var socket = io();
 var nickname;
-function initNetwork()
-{
-	    // Check if nickname stored in localStorage
-        if('localStorage' in window && localStorage.getItem('nickname')) {
-            nickname = localStorage.getItem('nickname');
-        } else {
-            // If not in localStorage, prompt user for nickname
-            nickname = prompt('Please enter your nickname','losos'+(new Date().getSeconds()));
-            if('localStorage' in window) {
-                localStorage.setItem('nickname', nickname);
-            }
-        }
+    function initNetwork()
+    {
         socket.on('id', function(sockid) {
             socket.id=sockid;
             //console.log("got id "+sockid);
         });
 
-        socket.emit('join', nickname);
+        var createClickHandler = function(arg) {
+            return function() { tryJoin(arg); };
+        };
 
-        socket.on('join', function(data) {
-            if (data.nick) {
-                $("chat").innerHTML += "<br/>" + data.nick +" joined the game!";
-                setTimeout(clearChat,5000);
-            } else if (data.objects) {
-                game.load(data);
+        socket.on('spectatorJoin', function(data) {
+            spectators = data.spectators;
+            var elem = $('playersinfo');
+            elem.innerHTML = "Spectators: " + spectators + ", Players: " + game.getPlayerCount();
+            if (data.gameState) {
+                game.load(data.gameState);
+                elem.innerHTML = "Spectators: " + spectators + ", Players: " + game.getPlayerCount();
+
                 //start
                 ren = new Renderer(game,textures,$('screen'));
                 game.updateEvery(Game.UPDATE_INTERVAL,0);
+
+                $('nickname').value = 'losos'+(new Date().getSeconds());
+                var characters = game.state.objects[0].characters;
+                for (var charName in characters){
+                    if (characters[charName].id) {
+                        $(charName).className = 'disabledmorda';
+                        $(charName).onclick = null;
+                    } else {
+                        $(charName).className = 'enabledmorda';
+                        $(charName).onclick = createClickHandler(charName);
+                    }
+                }
+                $('choose').style.display='block';
+            }
+        });
+
+        socket.on('playerJoin', function(data) {
+            $('choose').style.display='none';
+            if (data.nick) {
+                writeChatLine(data.nick +" joined the game as " + data.character+ "!");
+                game.join(data);
+                spectators--;
+                $('playersinfo').innerHTML = "Spectators: " + spectators + ", Players: " + game.getPlayerCount();
+
+            }
+            if (data.objects) {
+                game.load(data);
             }
         });
         socket.on('masterChanged', function(data) {
-            $("chat").innerHTML += "<br/>" + data.nick + " now controls movements!";
-            console.log("my id "+ socket.id + " data id " +data.id+ " eq=" +(socket.id == data.id));
+            writeChatLine(data.nick + " now controls movements!");
             if (socket.id == data.id)
             {
-                //alert("you now control movements. Use buttons to move");
                 bindKeys();
                 //$('masterbutt').disabled=true;
             }
@@ -159,30 +177,51 @@ function initNetwork()
                 document.onkeydown = null;
                 //$('masterbutt').disabled=false;
             }
-            setTimeout(clearChat,5000);
         });
 
-        socket.on('leave', function(nick) {
-            $("chat").innerHTML += "<br/>" + nick + " left the game!";
-            setTimeout(clearChat,5000);
+        socket.on('leave', function(data) {
+            if (!game.leave(data.id))
+                spectators--;
+            $('playersinfo').innerHTML = "Spectators: " + spectators + ", Players: " + game.getPlayerCount();
+            if (data.nick)
+                writeChatLine(data.nick + " left the game!");
         });
 
 
         socket.on('move', function(data) {
             game.actionArray.push ({
-              turn: data.t,
-              move: data.m
+                turn: data.t,
+                move: data.m
             });
             var pl = game.state.objects[0];
             pl.x = data.x;
             pl.y = data.y;
             pl.angle = data.a;
         });
+
+
+        socket.emit('join');
+    }
+
+function tryJoin(character){
+    var el = $('nickname');
+    var nick = el.value.trim();
+    if (nick.length<3){
+        alert("type nick!");
+        el.focus();
+        return;
+    }
+    socket.emit('join',{character:character,nick:nick});
 }
 
 function requestControl()
 {
     socket.emit('masterChanged',nickname);
+}
+
+function writeChatLine(text, timeout){
+    $("chat").innerHTML += "<br/>" + text;
+    setTimeout(clearChat, timeout || 5000);
 }
 
 function clearChat()

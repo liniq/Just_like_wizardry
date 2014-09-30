@@ -40,32 +40,50 @@ var masterSocketId=null;
 io.sockets.on('connection', function (socket) {
     //console.log('socket connected');
     socket.emit('id',socket.id);
+    //console.log("id "+ socket.id +' joined');
 
-    socket.on('join', function(nick){
-        //console.log('join emitted');
-        socket.username = nick;
-        socket.emit('join',game.save());
-        socket.broadcast.emit('join',{nick: nick});
-        if (masterSocketId==null)
-        {
-            masterSocketId=socket.id;
-            io.sockets.emit('masterChanged',{id: socket.id, nick:nick});
+    socket.on('join', function(data){
+        if (data) { // new player join
+            data.id = socket.id;
+            if (game.join(data)){
+                socket.username = data.nick;
+                io.sockets.emit('playerJoin',data);
+                if (masterSocketId==null) {
+                    masterSocketId=socket.id;
+                    io.sockets.emit('masterChanged',{id: data.id, nick:data.nick});
+                }
+            }
+        }
+        else { //spectator joined
+            // send game state
+            var spectators = io.sockets.sockets.length - game.getPlayerCount();
+            socket.emit('spectatorJoin', {spectators: spectators, gameState: game.save()});
+            //send all others that spectator joined
+            socket.broadcast.emit('spectatorJoin', {spectators: spectators});
         }
     });
 
-    socket.on('masterChanged', function (nick) {
-        if (masterSocketId!=socket.id) {
+    socket.on('masterChanged', function () {
+        if (game.isPlayer(socket.id) && masterSocketId!=socket.id) {
             masterSocketId = socket.id;
-            io.sockets.emit('masterChanged', {id: socket.id, nick:nick});
+            io.sockets.emit('masterChanged', {id: socket.id, nick:socket.username});
         }
     });
     socket.on('disconnect', function () {
-      socket.broadcast.emit('leave', socket.username);
-        if (masterSocketId==socket.id)
-        {
-            masterSocketId = io.sockets.length > 0 && io.sockets[0].id != socket.id ? io.sockets[0].id : null;
+        socket.broadcast.emit('leave', {id: socket.id, nick:socket.username});
+        //console.log("id "+ socket.id +' left');
+        game.leave(socket.id);
+        if (masterSocketId==socket.id) {
+            var characters = game.state.objects[0].characters;
+            masterSocketId=null;
+            for (var i in characters){
+                if (characters[i].id){
+                    masterSocketId = characters[i].id;
+                    break;
+                }
+            }
             if (masterSocketId!=null)
-                io.sockets.emit('masterChanged',io.sockets[0].username);
+                io.sockets.emit('masterChanged',{id: socket.id, nick:socket.username});
         }
     });
 

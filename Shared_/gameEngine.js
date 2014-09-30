@@ -15,11 +15,12 @@ var Game = function(level, objectTypes, itemTypes) {
   //this.itemTypes = itemTypes;
   this.level = level;
 
-  this.players ={};
   this.actionArray = [];
     // Last used ID
   this.lastId = 0;
-  this.callbacks = {};
+  this.playersCount =0;
+
+    this.callbacks = {};
 
   // Counter for the number of updates
   this.updateCount = 0;
@@ -324,19 +325,46 @@ Game.prototype.over = function() {
 /**
  * Called when a new player joins
  */
-Game.prototype.join = function(player) {
-    this.players[player.id] = player;
+Game.prototype.join = function(params) {
+    var character = this.state.objects[0].characters[params.character];
+    if (character && !character.id) {
+        character.id = params.id;
+        character.nick = params.nick;
+        this.playersCount+=1;
+        this.callback_('join', params);
+        return true;
+    }
+    return false;
 };
 
 /**
 * Called when a player leaves
 */
 Game.prototype.leave = function(id) {
-  delete this.players[id];
+    var characters = this.state.objects[0].characters;
+    for (var i in characters){
+        if (characters[i].id && characters[i].id == id){
+            delete characters[i].id;
+            delete characters[i].nick;
+            this.playersCount-=1;
+            this.callback_('leave', id);
+            return true;
+        }
+    }
+    return false;
 };
 
 Game.prototype.getPlayerCount = function() {
-  return this.players.length;
+  return this.playersCount;
+};
+
+Game.prototype.isPlayer = function(id) {
+    var characters = this.state.objects[0].characters;
+    for (var i in characters) {
+        if (characters[i].id && characters[i].id == id)
+            return true;
+    }
+    return false;
 };
 
 /***********************************************
@@ -372,6 +400,11 @@ Game.prototype.load = function(savedState) {
     timeStamp: (new Date()).valueOf()
   };
   this.createObjects(savedState.objects);
+  var characters = this.state.objects[0].characters;
+  for (var charName in characters) {
+      if (characters[charName].id)
+          this.playersCount++;
+  }
 };
 
 Game.prototype.objectExists = function(objId) {
@@ -508,18 +541,46 @@ var Player = function (params){
     if (!params) {
         return;
     }
-	this.hp1 = params.hp1;
-	this.hp2 = params.hp2;
-	this.hp3 = params.hp3;
-	this.hp4 = params.hp4;
 	
 	this.objectType ='Player';
     this.type ='Player';
 	MovingObject.call(this, params);
 
     this.isPenetratable=false;
-    this.moveSpeed = 0.07;
+    this.moveSpeed = 0.08;
     this.turnSpeed = 3;
+
+    // add characters
+    this.characters = {};
+    if (params.characters)
+        this.characters = params.characters;
+    else {
+
+        this.characters.Zombotron = {
+            totalHP: 15,
+            currentHP: 15,
+            damage: '1-3',
+            meleeAttackRange: this.r + 0.4
+        };
+        this.characters.Lososo = {
+            totalHP: 10,
+            currentHP: 10,
+            damage: '2-3',
+            meleeAttackRange: this.r + 0.3
+        };
+        this.characters.WarGay = {
+            totalHP: 8,
+            currentHP: 8,
+            damage: '2-4',
+            meleeAttackRange: this.r + 0.5
+        };
+        this.characters.PabloPicasso = {
+            totalHP: 11,
+            currentHP: 11,
+            damage: '0-5',
+            meleeAttackRange: this.r + 0.4
+        };
+    }
 };
 Player.prototype = new MovingObject;
 Player.prototype.constructor = Player;

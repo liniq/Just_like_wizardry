@@ -31,7 +31,7 @@ div#overlay {
     color : white;
     font-family : lucida console, courier new;
     font-size : 10px;
-    z-index : 100000001;
+    z-index : 10001;
 }
 
 div#floor {
@@ -159,15 +159,28 @@ div#ceiling {
     color:#EEDD82;
 }
 
-#chat {
+#playersinfo {
     position: absolute;
-    bottom: 100px;
+    bottom: 90px;
+    right: 0px;
     color: #ffffff;
     display: block;
-    width: 200px;
-    height: 100px;
+    width: 150px;
+    height: 20px;
+    padding: 10px;
+    font-size: 11px;
+    text-align: right;
+}
+
+#chat {
+    position: absolute;
+    bottom: 90px;
+    color: #ffffff;
+    display: block;
+    width: 250px;
+    height: 90px;
 	padding: 10px;
-	font-size: 13px
+	font-size: 13px;
 }
 
 #chat .red {
@@ -188,16 +201,34 @@ div#ceiling {
     bottom: 130px;
 	left: 150px;
     color: #ffffff;
-	display: block;
+	display: none;
     width: 500px;
     height: 330px;
 	text-align: center;
+    z-index : 100001;
 }
 
 #choose .cyc {
 	font-size: 16px;
 	padding-top: 44px;
 	padding-bottom: 60px;
+}
+
+.enabledmorda {
+    opacity: 0.7;
+    cursor: default;
+    margin: 1px;
+}
+.enabledmorda:hover
+{
+    opacity: 1;
+    cursor: default;
+    border: 1px solid red;
+    margin: 0;
+}
+
+.disabledmorda {
+    opacity: 0.2;
 }
 
 	
