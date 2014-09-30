@@ -83,7 +83,7 @@ io.sockets.on('connection', function (socket) {
                 }
             }
             if (masterSocketId!=null)
-                io.sockets.emit('masterChanged',{id: socket.id, nick:socket.username});
+                io.sockets.emit('masterChanged',{id: masterSocketId, nick:io.sockets.connected[masterSocketId].username});
         }
     });
 
