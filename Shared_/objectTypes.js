@@ -23,7 +23,7 @@ exports.donkey= {type:'donkey', objectType: 'KillableObject', totalHP:100, moveS
 
 
 //definition of player characters characteristics
-exports.player = {
+exports.Player = {
 	type:'Player', 
 	objectType: 'Player',
 	isPenetratable:false,
@@ -51,7 +51,7 @@ exports.player = {
 			meleeAttackRange: 0.7,
 			initiative: 1
 		},
-		PabloPicasso = {
+		PabloPicasso: {
 			totalHP: 11,
 			currentHP: 11,
 			damage: [0,5],
