@@ -66,8 +66,14 @@ div#ceiling {
 }
 
 #party {
-    position : absolute;
-    right: 20px;
+    position: absolute;
+    right: 0px;
+	top: 40px;
+	display: block;
+	height: 380px;
+	width: 110px;
+	padding-left: 70px;
+	background: url(../img/menuright.png) 0 0 no-repeat;	
 }
 
 #party .one {
@@ -213,18 +219,18 @@ div#ceiling {
 	height: 330px;
 	text-align: center;
 	z-index: 111111111;
-	-webkit-animation: animatedfog 70s linear infinite;
-	animation: animatedfog 70s linear infinite;
+	-webkit-animation: animatedfog 12s linear infinite;
+	animation: animatedfog 12s linear infinite;
 }
 
 @-webkit-keyframes animatedfog {
 	from { background-position: 150px 80px, 0 0; }
-	to { background-position: 150px 80px, 100% 0; }
+	to { background-position: 150px 80px, 3000px 0; }
 }
 
 @keyframes animatedfog {
 	from { background-position: 150px 80px, 0 0; }
-	to { background-position: 150px 80px, 100% 0; }
+	to { background-position: 150px 80px, 3000px 0; }
 }
 
 #choose .cyc {
