@@ -16,7 +16,8 @@ var defaultAI = function (me,player,others,level){
     }
 };
 
-exports.lamp = {type:'lamp', objectType: 'WorldObject', isPenetratable: true};
+//declare new object in game and its characteristics.  Add more objects here. Possible objectTypes in game -WorldObject,MovingObject,KillableObject,ContainerObject
+//exports.some = {type:'some', objectType: 'WorldObject', isPenetratable: true};
 exports.guard = {type:'guard', objectType: 'KillableObject', isPenetratable:false, totalHP:10, moveSpeed: 0.03, turnSpeed: 3, initiative: 1, hostility:1, AI: defaultAI, battleAI: null};
 exports.donkey= {type:'donkey', objectType: 'KillableObject', totalHP:100, moveSpeed:0.01, turnSpeed:1, r:0.8, hostility: 1, initiative: 3, AI: defaultAI, battleAI: null};
 

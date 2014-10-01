@@ -14,7 +14,7 @@ var textures = {
     sprites: {
         lamp: "img/sprites/bt.png"
     },
-    //all other objects. Can be more than one image per object
+    //all other objects. Can be more than one image per object. Object has to be one of defined in objectTypes.js
     worldObjects: {
         donkey: {img : "img/sprites/enemy_keeper.png"},
         guard: {
