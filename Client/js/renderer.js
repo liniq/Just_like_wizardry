@@ -125,6 +125,8 @@ Renderer.prototype.initWorldObjects = function () {
         };
 
         obj.img = img;
+        //leviate here
+        obj.levitate = type.levitate;
         this.worldObjectsSprites[obj.id] = obj;
 
         this.viewCanvas.appendChild(img);
@@ -268,6 +270,11 @@ Renderer.prototype.renderWorldObjects = function () {
 
             // top position is halfway down the screen, minus half the sprite height
             var styleTop = ((this.screenHeight-size)/2);
+            if (obj.levitate){
+                var dt = new Date();
+                styleTop+= Math.round((size/140) * Math.cos((((dt.getSeconds()%2)*1000+dt.getMilliseconds())/2000)*twoPI));
+                //console.log("float = "+floating);
+            }
             if (styleTop != oldStyles.top) {
                 style.top = styleTop + "px";
                 oldStyles.top = styleTop;

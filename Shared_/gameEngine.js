@@ -44,7 +44,7 @@ Game.prototype.createObjects = function(objects){
         if (otypes[o.type]){
 			var params;
             //if id exists, means we restore saved state, otherwise take from types
-            if (o.id){
+            if (typeof o.id !== 'undefined'){
                 params = o;
                 if (this.lastId < o.id)
                     this.lastId= o.id;

@@ -16,7 +16,10 @@ var textures = {
     },
     //all other objects. Can be more than one image per object. Object has to be one of defined in objectTypes.js
     worldObjects: {
-        donkey: {img : "img/sprites/enemy_keeper.png"},
+        donkey: {
+            img : "img/sprites/enemy_keeper.png",
+            levitate: true //render "floating" animation
+        },
         guard: {
             img : "img/sprites/guard.png",
             //Animated sprites props

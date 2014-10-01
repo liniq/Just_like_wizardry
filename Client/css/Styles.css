@@ -204,7 +204,7 @@ div#ceiling {
 	overflow: hidden;
 	padding: 80px 150px 190px 150px;
 	color: #ffffff;
-	display: none;
+	display: block;
 	width: 500px;
 	height: 330px;
 	text-align: center;
