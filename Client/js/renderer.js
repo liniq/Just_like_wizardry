@@ -97,6 +97,7 @@ Renderer.prototype.initSprites = function () {
         img.visible = false;
         img.style.position = "absolute";
         img.pos = {x:ps[i].x, y:ps[i].y};
+        img.className ='spriteType_'+ ps[i].type;
 
         this.spriteMap[ps[i].y][ps[i].x] = img;
         this.viewCanvas.appendChild(img);
@@ -113,6 +114,8 @@ Renderer.prototype.initWorldObjects = function () {
         img.src = type.img;
         img.style.display = "none";
         img.style.position = "absolute";
+        img.id = 'objectId_'+obj.id;
+        img.className ='objectType_'+obj.type;
 
         obj.oldStyles = {
             left : 0,
