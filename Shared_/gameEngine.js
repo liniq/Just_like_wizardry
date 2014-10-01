@@ -38,15 +38,11 @@ var Game = function(level, objectTypes, itemTypes) {
 
 Game.prototype.createObjects = function(objects){
     var otypes = this.objectTypes;
-    this.state.objects = {};
+	this.state.objects = {};
     for (var i in objects){
         var o = objects[i];
-        if(o.type == 'Player'){
-            this.state.objects[0] = new Player(o);
-            this.state.objects[0].id =0;
-        }
-        else if (otypes[o.type]){
-            var params;
+        if (otypes[o.type]){
+			var params;
             //if id exists, means we restore saved state, otherwise take from types
             if (o.id){
                 params = o;
@@ -54,11 +50,13 @@ Game.prototype.createObjects = function(objects){
                     this.lastId= o.id;
             } else {
                 params = otypes[o.type];
-                params.id = this.newId_();
+                params.id = params.objectType == 'Player' ? 0 : this.newId_();
                 params.x = o.x;
                 params.y = o.y;
             }
-            if (params.objectType == 'KillableObject')
+			if (params.objectType == 'Player')
+				this.state.objects[params.id] = new Player(params);
+            else if (params.objectType == 'KillableObject')
                 this.state.objects[params.id] = new KillableObject(params);
             else if (params.objectType == 'MovingObject')
                 this.state.objects[params.id] = new MovingObject(params);
@@ -523,6 +521,7 @@ var KillableObject = function (params){
 	this.hostility = params.hostility || 0;
 	this.totalHP = params.totalHP || 1;
 	this.currentHP = params.currentHP || this.totalHP;
+	this.defence = params.defence || 0;
 	this.sightDistance = params.sightDistance || 10;
 	if (typeof params.isPenetratable === 'undefined')
         params.isPenetratable=false;
@@ -546,41 +545,19 @@ var Player = function (params){
     this.type ='Player';
 	MovingObject.call(this, params);
 
-    this.isPenetratable=false;
-    this.moveSpeed = 0.08;
-    this.turnSpeed = 3;
-
+    this.isPenetratable= params.isPenetratable || false;
+    this.moveSpeed = params.moveSpeed || 0.08;
+    this.turnSpeed = params.turnSpeed || 3;
     // add characters
-    this.characters = {};
-    if (params.characters)
-        this.characters = params.characters;
-    else {
-
-        this.characters.Zombotron = {
-            totalHP: 15,
-            currentHP: 15,
-            damage: '1-3',
-            meleeAttackRange: this.r + 0.4
-        };
-        this.characters.Lososo = {
-            totalHP: 10,
-            currentHP: 10,
-            damage: '2-3',
-            meleeAttackRange: this.r + 0.3
-        };
-        this.characters.WarGay = {
-            totalHP: 8,
-            currentHP: 8,
-            damage: '2-4',
-            meleeAttackRange: this.r + 0.5
-        };
-        this.characters.PabloPicasso = {
-            totalHP: 11,
-            currentHP: 11,
-            damage: '0-5',
-            meleeAttackRange: this.r + 0.4
-        };
-    }
+    this.characters = params.characters;
+	//calc initiative
+	if (this.characters){
+		var totalInitiative =0;
+		for (var i in this.characters)
+			totalInitiative+= this.characters[i].initiative;
+		this.initiative = totalInitiative/this.characters.length;
+	}
+    
 };
 Player.prototype = new MovingObject;
 Player.prototype.constructor = Player;
