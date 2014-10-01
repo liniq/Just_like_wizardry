@@ -50,7 +50,7 @@ Game.prototype.createObjects = function(objects){
                     this.lastId= o.id;
             } else {
                 params = otypes[o.type];
-                params.id = params.objectType == 'Player' ? 0 : this.newId_();
+                params.id = (params.objectType == 'Player' ? 0 : this.newId_());
                 params.x = o.x;
                 params.y = o.y;
             }
@@ -440,7 +440,7 @@ var WorldObject = function(params) {
   if (!params) {
     return;
   }
-  this.id = params.id || 1;
+  this.id = params.id;
   
   this.x = params.x;
   this.y = params.y;
@@ -549,14 +549,14 @@ var Player = function (params){
     this.moveSpeed = params.moveSpeed || 0.08;
     this.turnSpeed = params.turnSpeed || 3;
     // add characters
-    this.characters = params.characters;
+    this.characters	 = params.characters;
 	//calc initiative
-	if (this.characters){
-		var totalInitiative =0;
-		for (var i in this.characters)
-			totalInitiative+= this.characters[i].initiative;
-		this.initiative = totalInitiative/this.characters.length;
-	}
+	//if (this.characters){
+	//	var totalInitiative =0;
+	//	for (var i in this.characters)
+	//		totalInitiative+= this.characters[i].initiative;
+	//	this.initiative = totalInitiative/this.characters.length;
+	//}
     
 };
 Player.prototype = new MovingObject;
