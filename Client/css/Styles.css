@@ -72,14 +72,17 @@ div#ceiling {
 	display: block;
 	height: 380px;
 	width: 110px;
-	padding-left: 70px;
+	padding-left: 60px;
+	padding-right: 10px;
+	padding-top: 15px
 	background: url(../img/menuright.png) 0 0 no-repeat;	
 }
 
 #party .one {
     font-size: 12px;
-    margin: 10px;
+    margin: 10px 0;
     width: 100px;
+	height: 100px;
 }
 
 #party .one img {
@@ -219,18 +222,18 @@ div#ceiling {
 	height: 330px;
 	text-align: center;
 	z-index: 111111111;
-	-webkit-animation: animatedfog 12s linear infinite;
-	animation: animatedfog 12s linear infinite;
+	-webkit-animation: animatedfog 18s linear infinite;
+	animation: animatedfog 18s linear infinite;
 }
 
 @-webkit-keyframes animatedfog {
 	from { background-position: 150px 80px, 0 0; }
-	to { background-position: 150px 80px, 3000px 0; }
+	to { background-position: 150px 80px, -2877px 0; }
 }
 
 @keyframes animatedfog {
 	from { background-position: 150px 80px, 0 0; }
-	to { background-position: 150px 80px, 3000px 0; }
+	to { background-position: 150px 80px, -2877px 0; }
 }
 
 #choose .cyc {
