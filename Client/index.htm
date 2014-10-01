@@ -13,25 +13,28 @@
 <body>
 
 <div id="screen">
+	<div id="animation"></div>
 	<div id="floor"></div>
 	<div id="ceiling"></div>
+	
 	
 	<div id="minimapcontainer">
 		<canvas id="minimap"></canvas>
 		<canvas id="minimapobjects"></canvas>
 	</div>
+	
 	<div id="choose">
-        <br /><br /><span class="cyc">Choose your character or <a style="text-decoration: underline; cursor: pointer" onclick="$('choose').style.display='none'; return false;">spectate</a></span><br /><br /><br /><br />
+        <span class="cyc">Choose your character or <a style="text-decoration: underline; cursor: pointer" onclick="$('choose').style.display='none'; return false;">spectate</a></span>
         <span>Your Nick: </span><input type="text" id="nickname" /><br /><br />
-			<!-- Место для морд персонажей -->
         <img id="Zombotron" class="enabledmorda" src="img/templar_assassin_hphover.png" name="Zombotron" />
-        <img id="Lososo" class="enabledmorda" src="img/keeper_of_the_light_hphover.png" name="Lososo" />
+        <img id="Lososo" class="enabledmorda" src="img/keeper_of_the_light_hphover.png" name="Lososo" /><br />
         <img id="WarGay" class="enabledmorda" src="img/life_stealer_hphover.png" name="WarGay" />
         <img id="PabloPicasso" class="enabledmorda" src="img/omniknight_hphover.png" name="PabloPicasso" />
 	</div>
 	
     <span id="chat"></span>
     <span id="playersinfo"></span>
+	
 	<div id="party">
 	    <div class="one left master">
 			<span id="playername2" class="name">Laur</span> <span id="playerhp2">hp: 4</span><br>
@@ -73,14 +76,6 @@
 			</div>
 			
 			<div id="target" class="action left">
-				<select id="chstarget">
-					<option>Airiz</option>
-					<option>Laur</option>
-					<option>Markus</option>
-					<option>Liniq</option>
-					<option>Enemy</option>
-				</select>
-				<br>
 				<span class="yel">Action:</span> <span id="action">Defend yourself</span>
 				<input type="button" id="masterbutt"  value="request control" onclick="requestControl()" />
 			</div>
