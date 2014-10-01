@@ -197,21 +197,30 @@ div#ceiling {
 }
 
 #choose {
-	background: url(../img/menuback.png) center no-repeat, url(../img/fog.jpg) 0 0 repeat-x;
+	background-image: url(../img/menuback.png), url(../img/fog.jpg);
+	background-position: 150px 80px, 0 0;
+	background-repeat: no-repeat, repeat-x;
 	position: absolute;
+	overflow: hidden;
 	padding: 80px 150px 190px 150px;
 	color: #ffffff;
 	display: none;
 	width: 500px;
 	height: 330px;
 	text-align: center;
-	z-index: 100001;
-	animation: none, animatedfog 40s linear infinite;
+	z-index: 111111111;
+	-webkit-animation: animatedfog 15s linear infinite;
+	animation: animatedfog 15s linear infinite;
+}
+
+@-webkit-keyframes animatedfog {
+	from { background-position: 150px 80px, 0 0; }
+	to { background-position: 150px 80px, 100% 0; }
 }
 
 @keyframes animatedfog {
-	from { background-position:center, 0 0; }
-	to { background-position:center, 100% 0; }
+	from { background-position: 150px 80px, 0 0; }
+	to { background-position: 150px 80px, 100% 0; }
 }
 
 #choose .cyc {
