@@ -197,16 +197,21 @@ div#ceiling {
 }
 
 #choose {
-	background: url(../img/menuback.png) no-repeat;
+	background: url(../img/menuback.png) center no-repeat, url(../img/fog.jpg) 0 0 repeat-x;
 	position: absolute;
-    top: 80px;
-	left: 150px;
-    color: #ffffff;
+	padding: 80px 150px 190px 150px;
+	color: #ffffff;
 	display: none;
-    width: 500px;
-    height: 330px;
+	width: 500px;
+	height: 330px;
 	text-align: center;
-    z-index : 100001;
+	z-index: 100001;
+	animation: none, animatedfog 40s linear infinite;
+}
+
+@keyframes animatedfog {
+	from { background-position:center, 0 0; }
+	to { background-position:center, 100% 0; }
 }
 
 #choose .cyc {
