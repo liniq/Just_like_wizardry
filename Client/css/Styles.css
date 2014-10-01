@@ -2,6 +2,7 @@ body {
     background:#000;
     color:#fff;
     font-family: Arial, serif;
+	cursor: url("../img/cursor.png"), auto;
 }
 
 div#minimapcontainer {

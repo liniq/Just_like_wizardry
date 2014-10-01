@@ -16,7 +16,7 @@ var textures = {
     },
     //all other objects. Can be more than one image per object
     worldObjects: {
-        donkey: {img : "img/sprites/donkey.png"},
+        donkey: {img : "img/sprites/enemy_keeper.png"},
         guard: {
             img : "img/sprites/guard.png",
             //Animated sprites props
