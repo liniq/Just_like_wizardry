@@ -1,5 +1,5 @@
 
-.objectType_donkey::before {
+.objectType_donkey:before {
 	position: absolute;
     left: 35px;
 	top: 24px;
@@ -7,5 +7,5 @@
 	height: 51px;
 	width: 50px;
 	z-index:10000000;
-	content: url(../img/sprites/keeper_handspell_anim.gif);	
+	background: url(../img/sprites/keeper_handspell_anim.gif) 0 0 no-repeat;	
 }
