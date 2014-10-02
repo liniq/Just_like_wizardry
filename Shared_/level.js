@@ -32,7 +32,7 @@ var map = [
 var objectPositions = [
 	{type: 'Player', x: 10.5 , y: 6.5 },
 	{type: 'donkey', x: 12, y: 22 },
-    type: 'donkey', x: 24, y: 15 
+    {type: 'donkey', x: 24, y: 15 }
 ];
 
 //sprites not belong to world objects. it is kind of decorations. They are always penetratable.
