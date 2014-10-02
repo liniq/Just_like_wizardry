@@ -10,6 +10,7 @@
 <script src="js/objectTextures.js" type="text/javascript"></script>
 <script src="js/renderer.js" type="text/javascript"></script>
 <script src="/socket.io/socket.io.js" type="text/javascript"></script>
+<link href='http://fonts.googleapis.com/css?family=Roboto+Slab:400,700' rel='stylesheet' type='text/css'>
 </head>
 <body>
 
@@ -18,11 +19,11 @@
 	<div id="floor"></div>
 	<div id="ceiling"></div>
 	
-	<!--
+	
 	<div id="minimapcontainer">
 		<canvas id="minimap"></canvas>
 		<canvas id="minimapobjects"></canvas>
-	</div> -->
+	</div>
 	
 	<div id="choose">
         <span class="cyc">Choose your character or <a style="text-decoration: underline; cursor: pointer" onclick="$('choose').style.display='none'; return false;">spectate</a></span>
@@ -31,6 +32,13 @@
         <img id="Lososo" class="disabledmorda" src="img/keeper_of_the_light_hphover.png" name="Lososo" /><br />
         <img id="WarGay" class="disabledmorda" src="img/life_stealer_hphover.png" name="WarGay" />
         <img id="PabloPicasso" class="disabledmorda" src="img/omniknight_hphover.png" name="PabloPicasso" />
+		<div>
+		<br><br>
+			<audio preload autoplay loop controls>
+				<source src="soundtrack.ogg" type="audio/ogg" >
+				<source src="soundtrack.mp3" type="audio/mp3" >
+			</audio>
+		</div>
 	</div>
 	
     <span id="chat"></span>
