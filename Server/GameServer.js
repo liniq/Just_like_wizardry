@@ -34,7 +34,11 @@ server.get(/.*/, restify.serveStatic({
 
 var game = new gameEngine.Game(level,objTypes,null);
 game.updateEvery(gameEngine.Game.UPDATE_INTERVAL,0);
+game.on('battleModeChanged',serverHandleGameModeChanged);
 
+function serverHandleGameModeChanged(newMode){
+    io.sockets.emit('battleModeChanged',{isBattleMode: newMode, gameState:game.save()});
+}
 //sockets stuff
 var masterSocketId=null;
 io.sockets.on('connection', function (socket) {

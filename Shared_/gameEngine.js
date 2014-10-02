@@ -6,6 +6,7 @@
 var Game = function(level, objectTypes, itemTypes) {
   this.GUID = 'some random shit here';
   this.serverOffset = 0;
+  this.isClient = false;
   this.state = {
       objects:{},
       timeStamp: (new Date()).valueOf()
@@ -99,6 +100,19 @@ Game.prototype.computeState = function(delta) {
         sortedByInitiative[i] = objects[i];
     }
     sortedByInitiative.sort(initiativeSorter);
+    //check battle start here, if we this instance is server
+    if (!this.isClient){
+        var newBattleMode = false;
+        for (i in sortedByInitiative) {
+            obj = objects[sortedByInitiative[i].id];
+            //obj hostile and close to player
+            if (obj.hostility && obj.distanceFrom(objects[0])< 1.5) {
+                newBattleMode = true;
+                break;
+            }
+        }
+        this.changeBattleMode(newBattleMode);
+    }
     //set player action
     if (this.actionArray.length>0) {
         objects[0].turn = this.actionArray[this.actionArray.length-1].turn; //turn
@@ -129,15 +143,11 @@ Game.prototype.computeState = function(delta) {
 };
 
 // change battle mode
-Game.prototype.changeBattleMode = function(battleModeTrigger){
-    if(battleModeTrigger){
-      this.callback_('changeBattleModeBattle');
+Game.prototype.changeBattleMode = function(newMode){
+    if (this.isBattleMode != newMode){
+        this.isBattleMode = newMode; // true or false
+        this.callback_('battleModeChanged',this.isBattleMode);
     }
-    else{
-      this.callback_('changeBattleModeWalk');
-    }
-
-    this.isBattleMode = battleModeTrigger; // true or false
 };
 
 

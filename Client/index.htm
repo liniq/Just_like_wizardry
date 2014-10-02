@@ -101,22 +101,11 @@
 function init() {
     initNetwork();
     game.on('update', render);
-
-    game.on('changeBattleModeBattle', changeModeToBattle);
-    game.on('changeBattleModeWalk', changeModeToWalk);
 }
 
 function render() {
     ren.renderCycle();
 }
-
-function changeModeToBattle() {
-  // here we change to battle mode
-}
-function changeModeToWalk() {
-  // here we change to walk mode
-}
-
 
 var socket = io();
 var nickname;
@@ -204,6 +193,14 @@ var nickname;
             pl.x = data.x;
             pl.y = data.y;
             pl.angle = data.a;
+        });
+
+        socket.on('battleModeChanged', function(data) {
+            writeChatLine(data.isBattleMode ? " Started battle mode": "Finished battle mode");
+            //set mode on client
+            game.changeBattleMode(data.isBattleMode);
+            //load precise positions of all units
+            game.load(data.gameState);
         });
 
 
