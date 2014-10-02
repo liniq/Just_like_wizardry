@@ -101,11 +101,22 @@
 function init() {
     initNetwork();
     game.on('update', render);
+
+    game.on('changeBattleModeBattle', changeModeToBattle);
+    game.on('changeBattleModeWalk', changeModeToWalk);
 }
 
 function render() {
     ren.renderCycle();
 }
+
+function changeModeToBattle() {
+  // here we change to battle mode
+}
+function changeModeToWalk() {
+  // here we change to walk mode
+}
+
 
 var socket = io();
 var nickname;

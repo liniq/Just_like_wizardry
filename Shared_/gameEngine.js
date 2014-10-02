@@ -130,12 +130,15 @@ Game.prototype.computeState = function(delta) {
 
 // change battle mode
 Game.prototype.changeBattleMode = function(battleModeTrigger){
+    if(battleModeTrigger){
+      this.callback_('changeBattleModeBattle');
+    }
+    else{
+      this.callback_('changeBattleModeWalk');
+    }
+
     this.isBattleMode = battleModeTrigger; // true or false
 };
-Game.prototype.syncronize = function(){
-
-};
-
 
 
 Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
@@ -305,7 +308,7 @@ Game.prototype.update = function(timeStamp) {
 
   this.state = this.computeState(delta);
   this.updateCount++;
-    this.callback_('update');
+  this.callback_('update');
 };
 
 /**
