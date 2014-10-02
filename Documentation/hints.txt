@@ -8,7 +8,7 @@ How to start the server part from WebStorm.
 6. go to File->Settings->JavaScript->libraries , check the box with "Node.Js Globals"
 
 7. start server Run > Run or debug.
-8. open localhost:6001 (or check the port in console log in webstorm)
+8. open localhost:6001 in browser (or check the port in console log in webstorm)
 
 all steps from 1 to 6 performed only once !!!!
 

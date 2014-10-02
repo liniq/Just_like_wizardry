@@ -11,6 +11,8 @@ $RECYCLE.BIN/
 # Idea dir
 .idea/
 
+# node modules
+node_modules/
 
 # Windows Installer files
 *.cab

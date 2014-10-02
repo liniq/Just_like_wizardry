@@ -128,6 +128,16 @@ Game.prototype.computeState = function(delta) {
     return newState;
 };
 
+// change battle mode
+Game.prototype.changeBattleMode = function(battleModeTrigger){
+    this.isBattleMode = battleModeTrigger; // true or false
+};
+Game.prototype.syncronize = function(){
+
+};
+
+
+
 Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
 	// time timeDelta has passed since we moved last time. We should have moved after time gameCycleDelay,
     // so calculate how much we should multiply our movement to ensure game speed is constant
