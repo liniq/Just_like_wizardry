@@ -22,6 +22,10 @@ To Push your locally committed changes to GitHUb:
 VCS->Git->Push (or CTRL+SHIFT+K)
 
 Bluemix data:
+
+install tools (once)
+https://github.com/cloudfoundry/cli/releases/
+
 api endpoint  https://api.ng.bluemix.net
 email  r.semenyk@gmail.com
 pass ask roman
