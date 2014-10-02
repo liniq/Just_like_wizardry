@@ -13,7 +13,7 @@ var Renderer = function(game,textures, viewCanvas) {
     this.screenHeight =500;
     this.miniMapScale = 8;
     this.showOverlay = true;
-    this.showMiniMap = true;
+    this.showMiniMap = false;
     this.stripWidth = 3;
     this.fov = 60 * Math.PI / 180;
 
