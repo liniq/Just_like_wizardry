@@ -51,7 +51,7 @@ div#ceiling {
     position : absolute;
     width : 800px;
     height : 300px;
-    background: url(../img/textures/sky.jpg) no-repeat;
+    background: url(../img/textures/sky.jpg) repeat-x;
     z-index : -10000000;
 }
 
@@ -72,7 +72,7 @@ div#ceiling {
 	display: block;
 	height: 380px;
 	width: 110px;
-	padding-left: 60px;
+	padding-left: 70px;
 	padding-right: 10px;
 	padding-top: 15px;
 	background: url(../img/menuright.png) 0 0 no-repeat;	
