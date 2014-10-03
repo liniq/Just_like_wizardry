@@ -6,7 +6,7 @@ body {
 	cursor: url("../img/cursor.png"), auto;
 }
 
-a:hover {
+a {
 	cursor: url("../img/cursor_h.png"), pointer;
 }
 
@@ -77,15 +77,14 @@ div#ceiling {
 	padding-right: 10px;
 	padding-top: 15px;
 	background: url(../img/menuright.png) 0 0 no-repeat;
-	-webkit-transition: width 2s; /* For Safari 3.1 to 6.0 */
-    transition: width 2s;	
+	-webkit-transition: right 2s; /* For Safari 3.1 to 6.0 */
+    transition: right 2s;	
 }
 
 #party:hover {
 	 right: 0;
+	 cursor: url("../img/cursor_h.png"), pointer;
 }
-
-
 
 #party .one {
 	font-size: 11px;
