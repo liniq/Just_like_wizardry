@@ -38,13 +38,14 @@ div#overlay {
     font-family : lucida console, courier new;
     font-size : 10px;
     z-index : 10001;
+	
 }
 
 div#floor {
     position : absolute;
     width : 100%;
     height : 100%;
-    background-color : rgb(128,128,128);
+    background: #808080 url(../img/shadowlight.png) bottom no-repeat;
     z-index : -10000000;
 }
 
@@ -52,7 +53,7 @@ div#ceiling {
     position : absolute;
     width : 800px;
     height : 300px;
-    background: url(../img/textures/sky.jpg) repeat-x;
+    background: #000000 url(../img/textures/sky.jpg) repeat-x;
     z-index : -10000000;
 }
 
@@ -64,6 +65,11 @@ div#ceiling {
     border : 1px solid black;
     overflow : hidden;
     margin: 2% auto;
+	box-shadow: inset 0px 0px 60px 2px rgba(0, 0, 0, 0.7);
+}
+
+#screen.fight {
+	box-shadow: inset 0px 0px 60px 2px rgba(150, 0, 0, 0.7)!important;
 }
 
 #party {
@@ -78,7 +84,8 @@ div#ceiling {
 	padding-top: 15px;
 	background: url(../img/menuright.png) 0 0 no-repeat;
 	-webkit-transition: right 2s; /* For Safari 3.1 to 6.0 */
-    transition: right 2s;	
+    transition: right 2s;
+	z-index: 120000000;	
 }
 
 #party:hover {
@@ -123,20 +130,23 @@ div#ceiling {
 }
 
 #ui {
-    z-index: 110000000;
+    z-index: 130000000;
     position : absolute;
-    top: 500px;
-    height:100px;
-    width: 100%;
-    padding: 15px;
-    background: -moz-linear-gradient(top,  rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.9) 100%); /* FF3.6+ */
-    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(0,0,0,0.9)), color-stop(100%,rgba(0,0,0,0.9))); /* Chrome,Safari4+ */
-    background: -webkit-linear-gradient(top,  rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.9) 100%); /* Chrome10+,Safari5.1+ */
-    background: -o-linear-gradient(top,  rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.9) 100%); /* Opera 11.10+ */
-    background: -ms-linear-gradient(top,  rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.9) 100%); /* IE10+ */
-    background: linear-gradient(to bottom,  rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.9) 100%); /* W3C */
-    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e6000000', endColorstr='#e6000000',GradientType=0 ); /* IE6-9 */
+	display: block;
+    bottom: -44px;
+	left: 210px;
+    height:180px;
+    width: 380px;
+    background: url(../img/uihero.png) 0 0 no-repeat;
+	-webkit-transition: bottom 2s; /* For Safari 3.1 to 6.0 */
+    transition: bottom 2s;
 }
+
+#ui:hover {
+	bottom: 0px;
+	cursor: url("../img/cursor_h.png"), pointer;
+}
+
 #ui .portret {
     float:left;
     margin-right: 15px;
@@ -235,7 +245,7 @@ div#ceiling {
 	width: 500px;
 	height: 330px;
 	text-align: center;
-	z-index: 111111111;
+	z-index: 160000000;
 	-webkit-animation: animatedfog 18s linear infinite;
 	animation: animatedfog 18s linear infinite;
 }
