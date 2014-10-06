@@ -45,14 +45,14 @@ div#floor {
     position : absolute;
     width : 100%;
     height : 100%;
-    background: #808080 url(../img/shadowlight.png) bottom no-repeat;
+    background: #687076 url(../img/shadowlight.png) bottom no-repeat;
     z-index : -10000000;
 }
 
 div#ceiling {
     position : absolute;
     width : 800px;
-    height : 300px;
+    height : 250px;
     background: #000000 url(../img/textures/sky.jpg) repeat-x;
     z-index : -10000000;
 }
@@ -266,6 +266,45 @@ div#ceiling {
 	padding-bottom: 35px;
 	display: block;
 }
+
+#scars {
+	margin: 60px auto 15px auto; 
+}
+
+#scars .scardragon {
+	width: 64px;
+	height: 64px;
+	background: url(../img/scardragon.png) 0 0 no-repeat;
+	display: inline-block;
+}
+
+#scars .scardragon:hover {
+	background: url(../img/scardragon-h.png) 0 0 no-repeat;
+}
+
+#scars .scarblood {
+	width: 64px;
+	height: 64px;
+	background: url(../img/scarblood.png) 0 0 no-repeat;
+	display: inline-block;
+}
+
+#scars .scarblood:hover {
+	background: url(../img/scarblood-h.png) 0 0 no-repeat;
+}
+
+#scars .scardeath {
+	width: 64px;
+	height: 64px;
+	background: url(../img/scardeath.png) 0 0 no-repeat;
+	display: inline-block;
+	margin: 0 15px;
+}
+
+#scars .scardeath:hover {
+	background: url(../img/scardeath-h.png) 0 0 no-repeat;
+}
+
 
 .enabledmorda {
     opacity: 0.75;
