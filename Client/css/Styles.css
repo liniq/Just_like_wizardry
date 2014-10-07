@@ -186,7 +186,7 @@ div#ceiling {
 }
 
 #ui #moveforward {
-	position:absolution;
+	position: absolute;
 	top: 52px;
 	left: 174px;
 	width: 30px;
@@ -195,7 +195,7 @@ div#ceiling {
 }
 
 #ui #moveleftward {
-	position:absolution;
+	position: absolute;
 	top: 65px;
 	left: 140px;
 	width: 30px;
@@ -204,7 +204,7 @@ div#ceiling {
 }
 
 #ui #moverightward {
-	position:absolution;
+	position: absolute;
 	top: 65px;
 	left: 215px;
 	width: 30px;
@@ -213,7 +213,7 @@ div#ceiling {
 }
 
 #ui #movebackward {
-	position:absolution;
+	position: absolute;
 	top: 94px;
 	left: 174px;
 	width: 30px;
