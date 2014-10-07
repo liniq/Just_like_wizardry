@@ -182,7 +182,43 @@ div#ceiling {
 
 #ui .ready {
     margin: 20px 30px 0 5px;
-    font-size:25px;
+    font-size: 25px;
+}
+
+#ui .moveforward {
+	position:absolution;
+	top: 52px;
+	left: 174px;
+	width: 30px;
+	height: 30px;
+	display: block;
+}
+
+#ui .moveleftward {
+	position:absolution;
+	top: 65px;
+	left: 140px;
+	width: 30px;
+	height: 40px;
+	display: block;
+}
+
+#ui .moverightward {
+	position:absolution;
+	top: 65px;
+	left: 215px;
+	width: 30px;
+	height: 40px;
+	display: block;
+}
+
+#ui .movebackward {
+	position:absolution;
+	top: 94px;
+	left: 174px;
+	width: 30px;
+	height: 30;
+	display: block;
 }
 
 .left {
@@ -271,6 +307,10 @@ div#ceiling {
 	margin: 60px auto 15px auto; 
 }
 
+#scars h2 {
+	font-weight: normal;
+}
+
 #scars .scardragon {
 	width: 64px;
 	height: 64px;
@@ -309,14 +349,14 @@ div#ceiling {
 .enabledmorda {
     opacity: 0.75;
     cursor: url("../img/cursor_h.png"), pointer;
-    margin: 1px;
+    border: 1px solid #333;
+	box-shadow: 0px 0px 4px 0px rgba(150, 150, 150, 0.4);
 }
 .enabledmorda:hover
 {
     opacity: 1;
     cursor: url("../img/cursor_h.png"), pointer;
     border: 1px solid red;
-    margin: 0;
 	box-shadow: 0px 0px 18px 0px rgba(200, 0, 0, 0.7);
 }
 
@@ -337,5 +377,13 @@ div#ceiling {
     height: 300px;
 	z-index : 11111111;
 }
-	
+
+
+
+#test {
+	position: absolute;
+    top: 20px;
+	left: 120px;
+	z-index : 11111111;
+}	
 	
