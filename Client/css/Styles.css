@@ -142,7 +142,7 @@ div#ceiling {
     transition: bottom 2s;
 }
 
-#ui:hover {
+#screen.fight #ui {
 	bottom: 0px;
 	cursor: url("../img/cursor_h.png"), pointer;
 }
@@ -185,7 +185,7 @@ div#ceiling {
     font-size: 25px;
 }
 
-#ui .moveforward {
+#ui #moveforward {
 	position:absolution;
 	top: 52px;
 	left: 174px;
@@ -194,7 +194,7 @@ div#ceiling {
 	display: block;
 }
 
-#ui .moveleftward {
+#ui #moveleftward {
 	position:absolution;
 	top: 65px;
 	left: 140px;
@@ -203,7 +203,7 @@ div#ceiling {
 	display: block;
 }
 
-#ui .moverightward {
+#ui #moverightward {
 	position:absolution;
 	top: 65px;
 	left: 215px;
@@ -212,7 +212,7 @@ div#ceiling {
 	display: block;
 }
 
-#ui .movebackward {
+#ui #movebackward {
 	position:absolution;
 	top: 94px;
 	left: 174px;
@@ -226,11 +226,11 @@ div#ceiling {
 }
 
 .right {
-    float:right;
+    float: right;
 }
 
 .yel {
-    color:#EEDD82;
+    color: #eedd82;
 }
 
 #playersinfo {
@@ -345,7 +345,6 @@ div#ceiling {
 	background: url(../img/scardeath-h.png) 0 0 no-repeat;
 }
 
-
 .enabledmorda {
     opacity: 0.75;
     cursor: url("../img/cursor_h.png"), pointer;
@@ -378,12 +377,10 @@ div#ceiling {
 	z-index : 11111111;
 }
 
-
-
 #test {
 	position: absolute;
-    top: 20px;
-	left: 120px;
+	top: 150px;
+	left: 12px;
 	z-index : 11111111;
 }	
 	
