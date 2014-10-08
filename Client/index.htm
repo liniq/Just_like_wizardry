@@ -75,10 +75,11 @@
 	</div>
 	
 	<div id="ui">
-		<a id="moveforward" href="#"></a>
-		<a id="moveleftward" href="#"></a>
-		<a id="moverightward" href="#"></a>
-		<a id="movebackward" href="#"></a>
+		<a id="moveforward" href="#" onclick="moveForward()"></a>
+		<a id="moveleftward" href="#" onclick="turnLeft()"></a>
+		<a id="moverightward" href="#" onclick="turnRight()"></a>
+		<a id="movebackward" href="#" onclick="moveBackward()"></a>
+
 	    <!--
 		<img class="portret" src="img/omniknight_hphover.png" alt="" />
 		<div id="hero">
@@ -319,6 +320,36 @@ function bindKeys() {
         sendUserInput();
 	};
 }
+
+function moveForward()
+{
+  storedUserInput.m=1;
+  sendUserInput();
+  storedUserInput.m=0;
+  sendUserInput();
+}
+function turnLeft()
+{
+  storedUserInput.t=-1;
+  sendUserInput();
+  storedUserInput.t=0;
+  sendUserInput();
+}
+function turnRight()
+{
+  storedUserInput.t=1;
+  sendUserInput();
+  storedUserInput.t=0;
+  sendUserInput();
+}
+function moveBackward()
+{
+  storedUserInput.m=-1;
+  sendUserInput();
+  storedUserInput.m=0;
+  sendUserInput();
+}
+
 
 setTimeout(init, 1);
 
