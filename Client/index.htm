@@ -25,30 +25,30 @@
 	</div>
 	
 	<div id="test">
-		<input type="button" id="masterbutt"  value="request control" onclick="requestControl()" />
-	</div>
-	
-	<div id="choose">
+        <input type="button" id="masterbutt"  value="request control" onclick="requestControl()" />
+    </div>
+
+    <div id="choose">
         <span class="cyc">Choose your character or <a style="text-decoration: underline; cursor: pointer" onclick="$('choose').style.display='none'; return false;">spectate</a></span>
         <span>Your Nick: </span><input type="text" id="nickname" /><br /><br />
         <img id="Zombotron" class="disabledmorda" src="img/templar_assassin_hphover.png" name="Zombotron" />
         <img id="Lososo" class="disabledmorda" src="img/keeper_of_the_light_hphover.png" name="Lososo" /><br />
         <img id="WarGay" class="disabledmorda" src="img/life_stealer_hphover.png" name="WarGay" />
         <img id="PabloPicasso" class="disabledmorda" src="img/omniknight_hphover.png" name="PabloPicasso" />
-		
-		<div id="scars">
-		<h2>Choose your scar</h2>
-			<a class="scardragon" href="#" title="+2 def, +1hp"></a>
-			<a class="scardeath" href="#" title="+1 dmg"></a>
-			<a class="scarblood" href="#" title="+2 hp, +1def"></a>
-		</div>
-		<!--
-		<div>
-			<audio preload loop controls>
-				<source src="soundtrack.ogg" type="audio/ogg" >
-				<source src="soundtrack.mp3" type="audio/mp3" >
-			</audio>
-		</div> -->
+
+        <div id="scars">
+        <h2>Choose your scar</h2>
+            <a class="scardragon" href="#" title="+2 def, +1hp"></a>
+            <a class="scardeath" href="#" title="+1 dmg"></a>
+            <a class="scarblood" href="#" title="+2 hp, +1def"></a>
+        </div>
+        <!--
+        <div>
+            <audio preload loop controls>
+                <source src="soundtrack.ogg" type="audio/ogg" >
+                <source src="soundtrack.mp3" type="audio/mp3" >
+            </audio>
+        </div> -->
 	</div>
 	
     <span id="chat"></span>
@@ -75,10 +75,16 @@
 	</div>
 	
 	<div id="ui">
+        <!--
 		<a id="moveforward" href="#" onclick="moveForward()"></a>
 		<a id="moveleftward" href="#" onclick="turnLeft()"></a>
 		<a id="moverightward" href="#" onclick="turnRight()"></a>
 		<a id="movebackward" href="#" onclick="moveBackward()"></a>
+		-->
+        <a id="moveforward" href="#" onmousedown="moveForward()" onmouseup="motionStop()" ondragleave="motionStop()"></a>
+        <a id="moveleftward" href="#" onmousedown="turnLeft()" onmouseup="turnStop()"  ondragleave="turnStop()"></a>
+        <a id="moverightward" href="#" onmousedown="turnRight()" onmouseup="turnStop()" ondragleave="turnStop()"></a>
+        <a id="movebackward" href="#" onmousedown="moveBackward()" onmouseup="motionStop()" ondragleave="motionStop()"></a>
 
 	    <!--
 		<img class="portret" src="img/omniknight_hphover.png" alt="" />
@@ -325,29 +331,32 @@ function moveForward()
 {
   storedUserInput.m=1;
   sendUserInput();
-  storedUserInput.m=0;
-  sendUserInput();
-}
-function turnLeft()
-{
-  storedUserInput.t=-1;
-  sendUserInput();
-  storedUserInput.t=0;
-  sendUserInput();
-}
-function turnRight()
-{
-  storedUserInput.t=1;
-  sendUserInput();
-  storedUserInput.t=0;
-  sendUserInput();
 }
 function moveBackward()
 {
   storedUserInput.m=-1;
   sendUserInput();
-  storedUserInput.m=0;
-  sendUserInput();
+}
+function motionStop()
+{
+    storedUserInput.m=0;
+    sendUserInput();
+}
+
+function turnLeft()
+{
+    storedUserInput.t=-1;
+    sendUserInput();
+}
+function turnRight()
+{
+    storedUserInput.t=1;
+    sendUserInput();
+}
+function turnStop()
+{
+    storedUserInput.t=0;
+    sendUserInput();
 }
 
 
