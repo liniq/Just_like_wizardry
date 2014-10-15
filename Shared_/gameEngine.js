@@ -144,10 +144,10 @@ Game.prototype.computeState = function(delta) {
 
 // change battle mode
 Game.prototype.changeBattleMode = function(newMode){
-    if (this.isBattleMode != newMode){
-        this.isBattleMode = newMode; // true or false
-        this.callback_('battleModeChanged',this.isBattleMode);
-    }
+  if (this.isBattleMode != newMode){
+      this.isBattleMode = newMode; // true or false
+      this.callback_('battleModeChanged',this.isBattleMode);
+  }
 };
 
 
