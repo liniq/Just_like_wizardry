@@ -151,6 +151,31 @@ Game.prototype.changeBattleMode = function(newMode){
 };
 
 
+// @REDO definitely should be redone
+Game.prototype.endBattle = function(){
+  // kill all enemies
+  var objects = this.state.objects;
+  var i, obj;
+
+  if (!this.isClient) {
+    var newBattleMode = false;
+    for(i in objects ) {
+      obj = objects[i];
+      //obj hostile and close to player
+      if (obj.hostility && obj.distanceFrom(objects[0]) < 1.5) {
+        throw "Just killed object: " + obj;
+        delete objects[i].id;
+      }
+
+      //this.callback_('killEnemy', objects[i].id);
+
+    }
+  }
+
+  changeBattleMode(false);
+};
+
+
 Game.prototype.moveObject = function(timeDelta, entity, otherObjects){
 	// time timeDelta has passed since we moved last time. We should have moved after time gameCycleDelay,
     // so calculate how much we should multiply our movement to ensure game speed is constant
@@ -575,6 +600,7 @@ var Player = function (params){
     this.characters	 = params.characters;
 	//calc initiative
 	//if (this.characters){
+	//	var totalInitiative =0;
 	//	var totalInitiative =0;
 	//	for (var i in this.characters)
 	//		totalInitiative+= this.characters[i].initiative;

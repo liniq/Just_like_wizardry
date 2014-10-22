@@ -241,11 +241,15 @@ var nickname;
                 ebb.type = "button";
                 ebb.id = "endbattlebutton";
                 ebb.value = "End battle!";
+                ebb.onclick = "endBattle()";
                 document.getElementById("endBattleButton").appendChild(ebb);
             }
+
+            /*
             else{
                 document.getElementById('screen').classList.remove('fight');
             }
+            */
 
 
         });
@@ -253,6 +257,15 @@ var nickname;
 
         socket.emit('join');
     }
+
+// @REDO this is the primitive button function in order to finish a battle
+function endBattle()
+{
+    document.getElementById('screen').classList.remove('fight');
+    document.getElementById("endBattleButton").removeChild(ebb);
+    game.endBattle();
+}
+
 
 function tryJoin(character){
     var el = $('nickname');
