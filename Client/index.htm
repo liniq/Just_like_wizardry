@@ -28,6 +28,8 @@
         <input type="button" id="masterbutt"  value="request control" onclick="requestControl()" />
     </div>
 
+    <div id="endBattleButton"></div>
+
     <div id="choose">
         <span class="cyc">Choose your character or <a style="text-decoration: underline; cursor: pointer" onclick="$('choose').style.display='none'; return false;">spectate</a></span>
         <span>Your Nick: </span><input type="text" id="nickname" /><br /><br />
@@ -234,6 +236,12 @@ var nickname;
             // adding fight class to the screen in case of battle and removing after battle finished
             if (data.isBattleMode){
                 document.getElementById('screen').classList.add('fight');
+
+                var ebb = document.createElement("input");
+                ebb.type = "button";
+                ebb.id = "endbattlebutton";
+                ebb.value = "End battle!";
+                document.getElementById("endBattleButton").appendChild(ebb);
             }
             else{
                 document.getElementById('screen').classList.remove('fight');
@@ -299,26 +307,21 @@ function bindKeys() {
         switch (e.keyCode) { // which key was pressed?
 			case 38: // up, move player forward, ie. increase speed
             case 87:
-                //storedUserInput.m=1;
                 moveForward();
 				break;
             case 40: // down, move player backward, set negative speed
             case 83:
-                //storedUserInput.m=-1;
                 moveBackward();
 				break;
 			case 37: // left, rotate player left
             case 65:
-                //storedUserInput.t=-1;
                 turnLeft();
 				break;
 			case 39: // right, rotate player right
             case 68:
-                //storedUserInput.t=1;
                 turnRight();
 				break;
 		}
-        //sendUserInput();
 	};
 
 	document.onkeyup = function(e) {
@@ -328,18 +331,15 @@ function bindKeys() {
 			case 40:
             case 87:
             case 83:
-                //storedUserInput.m=0;
                 motionStop();
 				break;
 			case 37:
 			case 39:
             case 65:
             case 68:
-                //storedUserInput.t=0;
                 turnStop();
 				break;
 		}
-        //sendUserInput();
 	};
 }
 
