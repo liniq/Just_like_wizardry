@@ -241,7 +241,7 @@ var nickname;
                 ebb.type = "button";
                 ebb.id = "endbattlebutton";
                 ebb.value = "End battle!";
-                ebb.onclick = "endBattle()";
+                ebb.onclick = endBattle;
                 document.getElementById("endBattleButton").appendChild(ebb);
             }
 
@@ -261,9 +261,14 @@ var nickname;
 // @REDO this is the primitive button function in order to finish a battle
 function endBattle()
 {
+    writeChatLine("ENNNNNND battle 111111");
     document.getElementById('screen').classList.remove('fight');
+    writeChatLine("ENNNNNND battle 22222222");
+    var ebb = document.getElementById("endBattleButton").lastChild;
     document.getElementById("endBattleButton").removeChild(ebb);
+    writeChatLine("ENNNNNND battle");
     game.endBattle();
+    writeChatLine("ALLLL OBJ KILLED");
 }
 
 

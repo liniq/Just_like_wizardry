@@ -154,6 +154,8 @@ Game.prototype.changeBattleMode = function(newMode){
 // @REDO definitely should be redone
 Game.prototype.endBattle = function(){
   // kill all enemies
+  throw "EEEEEENDDD";
+
   var objects = this.state.objects;
   var i, obj;
 
