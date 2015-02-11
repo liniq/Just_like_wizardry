@@ -138,10 +138,14 @@ function render() {
     ren.renderCycle();
 }
 
-var socket = io();
+var socket = io({transports: ['websocket','polling']});
 var nickname;
     function initNetwork()
     {
+        socket.on('connect', function() {
+            console.log(socket.io.engine.transport.name);
+        });
+
         socket.on('id', function(sockid) {
             socket.id=sockid;
             //console.log("got id "+sockid);
