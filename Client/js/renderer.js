@@ -137,6 +137,7 @@ Renderer.prototype.initWorldObjects = function () {
 };
 
 Renderer.prototype.renderCycle = function () {
+    this.player = game.state.objects[0];
     this.clearSprites();
     this.castRays();
     this.renderSky();
