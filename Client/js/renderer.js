@@ -232,6 +232,7 @@ Renderer.prototype.renderWorldObjects = function () {
         var obj = this.worldObjectsSprites[i];
         // make sure object still exists
         if (!this.game.state.objects[obj.id]) {
+            this.viewCanvas.removeChild(obj.img);
             delete this.worldObjectsSprites[i];
             continue;
         }

@@ -35,9 +35,13 @@ server.get(/.*/, restify.serveStatic({
 var game = new gameEngine.Game(level,objTypes,null);
 game.updateEvery(gameEngine.Game.UPDATE_INTERVAL,0);
 game.on('battleModeChanged',serverHandleGameModeChanged);
+game.on('objectDeleted',serverHandleObjectDeleted);
 
 function serverHandleGameModeChanged(newMode){
     io.sockets.emit('battleModeChanged',{isBattleMode: newMode, gameState:game.save()});
+}
+function serverHandleObjectDeleted(objId){
+    io.sockets.emit('objectDeleted',{id:objId});
 }
 //sockets stuff
 var masterSocketId=null;
@@ -99,6 +103,12 @@ io.sockets.on('connection', function (socket) {
             //io.sockets.emit('path', process.cwd());
         }
 
+    });
+
+    socket.on('forceEndBattle', function (data) {
+        if (socket.id == masterSocketId){
+            game.forceEndBattle();
+        }
     });
 });
 

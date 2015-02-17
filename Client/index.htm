@@ -26,9 +26,8 @@
 	
 	<div id="test">
         <input type="button" id="masterbutt"  value="request control" onclick="requestControl()" />
+        <input type="button" id="endBattleButton"  value="End Battle!" onclick="requestEndBattle()" style="display: none" />
     </div>
-
-    <div id="endBattleButton"></div>
 
     <div id="choose">
         <span class="cyc">Choose your character or <a style="text-decoration: underline; cursor: pointer" onclick="$('choose').style.display='none'; return false;">spectate</a></span>
@@ -121,10 +120,8 @@
 
 	</div>
 
-
-
+</div>
 <div id="debug"></div>
-
 <script type="text/javascript">
     var game = new Game(window.gameLevel,window.gameTypes);
     var ren;// = new Renderer(game,textures,$('screen'));
@@ -132,10 +129,23 @@
 function init() {
     initNetwork();
     game.on('update', render);
+    game.on('battleModeChanged', onBattleModeChanged);
+    game.on('objectDeleted', function(objId){writeChatLine('Deleted object '+objId+'!');});
 }
 
 function render() {
     ren.renderCycle();
+}
+
+function onBattleModeChanged(isBattleModeNew) {
+    writeChatLine(isBattleModeNew ? " Started battle mode": "Finished battle mode");
+    document.getElementById('endBattleButton').style.display = isBattleModeNew ? 'block' : 'none';
+
+    // adding fight class to the screen in case of battle and removing after battle finished
+    if (isBattleModeNew)
+        document.getElementById('screen').classList.add('fight');
+    else
+        document.getElementById('screen').classList.remove('fight');
 }
 
 var socket = io({transports: ['websocket','polling']});
@@ -224,55 +234,26 @@ var nickname;
                 turn: data.t,
                 move: data.m
             });
-            var pl = game.state.objects[0];
-            pl.x = data.x;
-            pl.y = data.y;
-            pl.angle = data.a;
         });
 
         socket.on('battleModeChanged', function(data) {
-            writeChatLine(data.isBattleMode ? " Started battle mode": "Finished battle mode");
             //set mode on client
             game.changeBattleMode(data.isBattleMode);
             //load precise positions of all units
             game.load(data.gameState);
-
-            // adding fight class to the screen in case of battle and removing after battle finished
-            if (data.isBattleMode){
-                document.getElementById('screen').classList.add('fight');
-
-                var ebb = document.createElement("input");
-                ebb.type = "button";
-                ebb.id = "endbattlebutton";
-                ebb.value = "End battle!";
-                ebb.onclick = endBattle;
-                document.getElementById("endBattleButton").appendChild(ebb);
-            }
-
-            /*
-            else{
-                document.getElementById('screen').classList.remove('fight');
-            }
-            */
-
-
         });
 
+        socket.on('objectDeleted', function(data) {
+            //set mode on client
+            game.deleteObject(data);
+        });
 
         socket.emit('join');
     }
 
-// @REDO this is the primitive button function in order to finish a battle
-function endBattle()
+function requestEndBattle()
 {
-    writeChatLine("ENNNNNND battle 111111");
-    document.getElementById('screen').classList.remove('fight');
-    writeChatLine("ENNNNNND battle 22222222");
-    var ebb = document.getElementById("endBattleButton").lastChild;
-    document.getElementById("endBattleButton").removeChild(ebb);
-    writeChatLine("ENNNNNND battle");
-    game.endBattle();
-    writeChatLine("ALLLL OBJ KILLED");
+    socket.emit('forceEndBattle',nickname);
 }
 
 

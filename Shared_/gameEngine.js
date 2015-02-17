@@ -4,30 +4,47 @@
  */
  //max fps
 var Game = function(level, objectTypes, itemTypes) {
-  this.GUID = 'some random shit here';
-  this.serverOffset = 0;
-  this.isClient = false;
-  this.state = {
-      objects:{},
-      timeStamp: (new Date()).valueOf()
-  };
-  this.isBattleMode = false;
-  this.objectTypes = objectTypes;
-  //this.itemTypes = itemTypes;
-  this.level = level;
+    this.GUID = 'some random shit here';
+    this.serverOffset = 0;
+    this.isClient = (typeof(window) == 'undefined' ? false : true);
+    this.state = {
+        objects:{},
+        timeStamp: (new Date()).valueOf()
+    };
+    this.isBattleMode = false;
+    this.objectTypes = objectTypes;
+    //this.itemTypes = itemTypes;
+    this.level = level;
 
-  this.actionArray = [];
+    this.actionArray = [];
     // Last used ID
-  this.lastId = 0;
-  this.playersCount =0;
+    this.lastId = 0;
+    this.playersCount =0;
 
     this.callbacks = {};
 
-  // Counter for the number of updates
-  this.updateCount = 0;
-  // Timer for the update loop.
-  this.timer = null;
-  this.createObjects(level.positions);
+    // Counter for the number of updates
+    this.updateCount = 0;
+    // Timer for the update loop.
+    this.timer = null;
+    this.createObjects(level.positions);
+
+    if (!this.isClient) {
+        this.serverCheckBattleStart = function(objArr){
+            //check battle start here
+            var newBattleMode = false;
+            for (var i in objArr) {
+                var obj = objArr[i];
+                //obj hostile and close to player
+                if (obj.id !=0 && obj.hostility && obj.distanceFrom(objArr[0])< 1.5) {
+                    newBattleMode = true;
+                    break;
+                }
+            }
+            this.changeBattleMode(newBattleMode);
+        }
+    }
+    else this.serverCheckBattleStart = function(objArr){};
 };
 
     //game settings
@@ -86,8 +103,6 @@ var initiativeSorter = function (a,b){
  * @param {number} delta Number of milliseconds in the future
  * @return {object} The new game state at that timestamp
 */
-
-
 Game.prototype.computeState = function(delta) {
     var newState = {
         objects: {},
@@ -100,19 +115,9 @@ Game.prototype.computeState = function(delta) {
         sortedByInitiative[i] = objects[i];
     }
     sortedByInitiative.sort(initiativeSorter);
-    //check battle start here, if we this instance is server
-    if (!this.isClient){
-        var newBattleMode = false;
-        for (i in sortedByInitiative) {
-            obj = objects[sortedByInitiative[i].id];
-            //obj hostile and close to player
-            if (obj.hostility && obj.distanceFrom(objects[0])< 1.5) {
-                newBattleMode = true;
-                break;
-            }
-        }
-        this.changeBattleMode(newBattleMode);
-    }
+
+    this.serverCheckBattleStart(objects);
+
     //set player action
     if (this.actionArray.length>0) {
         objects[0].turn = this.actionArray[this.actionArray.length-1].turn; //turn
@@ -128,15 +133,22 @@ Game.prototype.computeState = function(delta) {
             //and move
             if (obj.move || obj.turn)
                 this.moveObject(delta, obj, objects);
-	    }
+        }
     }
     else {
         // battle mode
-	    for (i in objects) {
+
+        //allow player to turn for free in battle mode
+        if (this.isClient && objects[0].turn) {
+            objects[0].move=0;
+            this.moveObject(delta, objects[0], objects);
+        }
+        for (i in objects) {
             obj = objects[sortedByInitiative[i].id];
+            //run battle AI
             if (this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI)
                 this.objectTypes[obj.type].battleAI(obj,objects[0],objects, this.level);
-	    }
+        }
     }
     newState.objects = objects;
     return newState;
@@ -151,30 +163,16 @@ Game.prototype.changeBattleMode = function(newMode){
 };
 
 
-// @REDO definitely should be redone
-Game.prototype.endBattle = function(){
-  // kill all enemies
-  throw "EEEEEENDDD";
-
-  var objects = this.state.objects;
-  var i, obj;
-
-  if (!this.isClient) {
-    var newBattleMode = false;
-    for(i in objects ) {
-      obj = objects[i];
-      //obj hostile and close to player
-      if (obj.hostility && obj.distanceFrom(objects[0]) < 1.5) {
-        throw "Just killed object: " + obj;
-        delete objects[i].id;
-      }
-
-      //this.callback_('killEnemy', objects[i].id);
-
+Game.prototype.forceEndBattle = function(){
+    if (!this.isBattleMode)
+        return;
+    var objects = this.state.objects;
+    for(var i in objects ) {
+        var obj = objects[i];
+        if (obj.hostility && obj.distanceFrom(objects[0]) < 1.5)
+            this.deleteObject(obj.id);
     }
-  }
-
-  changeBattleMode(false);
+    this.serverCheckBattleStart(objects);
 };
 
 
@@ -339,13 +337,26 @@ Game.prototype.update = function(timeStamp) {
   if (delta < 0) {
     throw "Can't compute state in the past. Delta: " + delta;
   }
-  if (delta > Game.MAX_DELTA) {
-    throw "Can't compute state so far in the future. Delta: " + delta;
-  }
+  //if (delta > Game.MAX_DELTA) {
+  //  throw "Can't compute state so far in the future. Delta: " + delta;
+  //}
 
   this.state = this.computeState(delta);
   this.updateCount++;
   this.callback_('update');
+};
+
+// Game object events
+Game.prototype.addObject = function(obj){
+
+};
+
+Game.prototype.deleteObject = function(idOrObj){
+    var obj = this.state.objects[idOrObj.id || idOrObj];
+    if (obj) {
+        this.callback_('objectDeleted', obj.id);
+        delete this.state.objects[obj.id];
+    }
 };
 
 /**
@@ -433,7 +444,7 @@ Game.prototype.save = function() {
     // Serialize to JSON!
     serialized.objects[obj.id] = obj.toJSON();
   }
-
+  serialized.isBattleMode = this.isBattleMode;
   return serialized;
 };
 
@@ -453,6 +464,7 @@ Game.prototype.load = function(savedState) {
       if (characters[charName].id)
           this.playersCount++;
   }
+  this.changeBattleMode(savedState.isBattleMode);
 };
 
 Game.prototype.objectExists = function(objId) {
