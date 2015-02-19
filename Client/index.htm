@@ -27,6 +27,7 @@
 	<div id="test">
         <input type="button" id="masterbutt"  value="request control" onclick="requestControl()" />
         <input type="button" id="endBattleButton"  value="End Battle!" onclick="requestEndBattle()" style="display: none" />
+        <input type="button" id="addEnemyButton"  value="Add enemy" onclick="createRandomEnemy()" />
     </div>
 
     <div id="choose">
@@ -124,17 +125,13 @@
 <div id="debug"></div>
 <script type="text/javascript">
     var game = new Game(window.gameLevel,window.gameTypes);
-    var ren;// = new Renderer(game,textures,$('screen'));
+    var ren = new Renderer(game,textures,$('screen'));
     var spectators =0;
 function init() {
     initNetwork();
-    game.on('update', render);
-    game.on('battleModeChanged', onBattleModeChanged);
-    game.on('objectDeleted', function(objId){writeChatLine('Deleted object '+objId+'!');});
-}
-
-function render() {
-    ren.renderCycle();
+    game.on('battleModeChange', onBattleModeChanged);
+    game.on('objectDelete', function(objId){writeChatLine('Deleted object '+objId+'!');});
+    game.on('objectCreate', function(obj){writeChatLine('Created object '+obj.name+'!');});
 }
 
 function onBattleModeChanged(isBattleModeNew) {
@@ -174,7 +171,6 @@ var nickname;
                 elem.innerHTML = "Spectators: " + spectators + ", Players: " + game.getPlayerCount();
 
                 //start
-                ren = new Renderer(game,textures,$('screen'));
                 game.updateEvery(Game.UPDATE_INTERVAL,0);
 
                 $('nickname').value = 'losos'+(new Date().getSeconds());
@@ -236,24 +232,29 @@ var nickname;
             });
         });
 
-        socket.on('battleModeChanged', function(data) {
+        socket.on('battleModeChange', function(data) {
             //set mode on client
             game.changeBattleMode(data.isBattleMode);
             //load precise positions of all units
             game.load(data.gameState);
         });
 
-        socket.on('objectDeleted', function(data) {
-            //set mode on client
-            game.deleteObject(data);
+        socket.on('objectDelete', function(data) {
+            game.deleteObject(data.id);
+        });
+        socket.on('objectCreate', function(data) {
+            game.createObject(data);
         });
 
         socket.emit('join');
     }
 
-function requestEndBattle()
-{
+function requestEndBattle(){
     socket.emit('forceEndBattle',nickname);
+}
+
+function createRandomEnemy(){
+    socket.emit('createRandomEnemy');
 }
 
 

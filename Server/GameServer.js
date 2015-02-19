@@ -34,14 +34,18 @@ server.get(/.*/, restify.serveStatic({
 
 var game = new gameEngine.Game(level,objTypes,null);
 game.updateEvery(gameEngine.Game.UPDATE_INTERVAL,0);
-game.on('battleModeChanged',serverHandleGameModeChanged);
-game.on('objectDeleted',serverHandleObjectDeleted);
+game.on('battleModeChange',serverHandleGameModeChanged);
+game.on('objectDelete',serverHandleObjectDeleted);
+game.on('objectCreate',serverHandleObjectCreated);
 
 function serverHandleGameModeChanged(newMode){
-    io.sockets.emit('battleModeChanged',{isBattleMode: newMode, gameState:game.save()});
+    io.sockets.emit('battleModeChange',{isBattleMode: newMode, gameState:game.save()});
 }
 function serverHandleObjectDeleted(objId){
-    io.sockets.emit('objectDeleted',{id:objId});
+    io.sockets.emit('objectDelete',{id:objId});
+}
+function serverHandleObjectCreated(obj){
+    io.sockets.emit('objectCreate',obj);
 }
 //sockets stuff
 var masterSocketId=null;
@@ -108,6 +112,11 @@ io.sockets.on('connection', function (socket) {
     socket.on('forceEndBattle', function (data) {
         if (socket.id == masterSocketId){
             game.forceEndBattle();
+        }
+    });
+    socket.on('createRandomEnemy', function () {
+        if (socket.id == masterSocketId){
+            game.createRandomEnemy();
         }
     });
 });

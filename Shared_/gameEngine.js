@@ -5,7 +5,6 @@
  //max fps
 var Game = function(level, objectTypes, itemTypes) {
     this.GUID = 'some random shit here';
-    this.serverOffset = 0;
     this.isClient = (typeof(window) == 'undefined' ? false : true);
     this.state = {
         objects:{},
@@ -54,37 +53,51 @@ var Game = function(level, objectTypes, itemTypes) {
     Game.BattleRoundInCycles = 300;
     Game.minPlayers = 1;
 
-Game.prototype.createObjects = function(objects){
+Game.prototype.createObject = function(obj, preventEvent){
     var otypes = this.objectTypes;
-	this.state.objects = {};
-    for (var i in objects){
-        var o = objects[i];
-        if (otypes[o.type]){
-			var params;
-            //if id exists, means we restore saved state, otherwise take from types
-            if (typeof o.id !== 'undefined'){
-                params = o;
-                if (this.lastId < o.id)
-                    this.lastId= o.id;
-            } else {
-                params = otypes[o.type];
-                params.id = (params.objectType == 'Player' ? 0 : this.newId_());
-                params.x = o.x;
-                params.y = o.y;
-            }
-			if (params.objectType == 'Player')
-				this.state.objects[params.id] = new Player(params);
-            else if (params.objectType == 'KillableObject')
-                this.state.objects[params.id] = new KillableObject(params);
-            else if (params.objectType == 'MovingObject')
-                this.state.objects[params.id] = new MovingObject(params);
-            else if (params.objectType == 'ContainerObject')
-                this.state.objects[params.id] = new ContainerObject(params);
-            else if (params.objectType == 'WorldObject')
-                this.state.objects[params.id] = new WorldObject(params);
+    if (otypes[obj.type]){
+        var params;
+        //if id exists, means we restore saved state, otherwise take from types
+        if (typeof obj.id !== 'undefined'){
+            params = obj;
+            if (this.lastId < obj.id)
+                this.lastId= obj.id;
+        } else {
+            params = otypes.GetNew([obj.type]);
+            params.id = (params.objectType == 'Player' ? 0 : this.newId_());
+            params.x = obj.x;
+            params.y = obj.y;
         }
-        else
-            throw "undefined type. Define type " +o.type + " in objectTypes";
+        if (params.objectType == 'Player')
+            this.state.objects[params.id] = new Player(params);
+        else if (params.objectType == 'KillableObject')
+            this.state.objects[params.id] = new KillableObject(params);
+        else if (params.objectType == 'MovingObject')
+            this.state.objects[params.id] = new MovingObject(params);
+        else if (params.objectType == 'ContainerObject')
+            this.state.objects[params.id] = new ContainerObject(params);
+        else if (params.objectType == 'WorldObject')
+            this.state.objects[params.id] = new WorldObject(params);
+        if (preventEvent != true)
+            this.callback_('objectCreate',this.state.objects[params.id]);
+    }
+    else
+        throw "undefined type. Define type " +obj.type + " in objectTypes";
+};
+
+Game.prototype.deleteObject = function(idOrObj, preventEvent){
+    var obj = this.state.objects[idOrObj.id || idOrObj];
+    if (obj) {
+        if (preventEvent != true)
+            this.callback_('objectDelete', obj.id);
+        delete this.state.objects[obj.id];
+    }
+};
+
+Game.prototype.createObjects = function(objects){
+    this.state.objects = {};
+    for (var i in objects){
+        this.createObject(objects[i],true);
     }
 };
 
@@ -139,7 +152,7 @@ Game.prototype.computeState = function(delta) {
         // battle mode
 
         //allow player to turn for free in battle mode
-        if (this.isClient && objects[0].turn) {
+        if (objects[0].turn) {
             objects[0].move=0;
             this.moveObject(delta, objects[0], objects);
         }
@@ -158,7 +171,7 @@ Game.prototype.computeState = function(delta) {
 Game.prototype.changeBattleMode = function(newMode){
   if (this.isBattleMode != newMode){
       this.isBattleMode = newMode; // true or false
-      this.callback_('battleModeChanged',this.isBattleMode);
+      this.callback_('battleModeChange',this.isBattleMode);
   }
 };
 
@@ -173,6 +186,25 @@ Game.prototype.forceEndBattle = function(){
             this.deleteObject(obj.id);
     }
     this.serverCheckBattleStart(objects);
+};
+
+Game.prototype.createRandomEnemy = function(){
+    var objects = this.state.objects;
+    var newObj = this.objectTypes.GetNew("donkey");
+    var end = false;
+    while (!end){
+        newObj.x = Math.floor(Math.random() * this.level.width);
+        newObj.y = Math.floor(Math.random() * this.level.height);
+        end=true;
+        for(var i in objects ) {
+            var obj = objects[i];
+            if (this.level.map[newObj.y][newObj.x]!=0 || obj.distanceFrom(newObj) < newObj.r+obj.r) {
+                end = false;
+                break;
+            }
+        }
+    }
+    this.createObject(newObj);
 };
 
 
@@ -346,19 +378,6 @@ Game.prototype.update = function(timeStamp) {
   this.callback_('update');
 };
 
-// Game object events
-Game.prototype.addObject = function(obj){
-
-};
-
-Game.prototype.deleteObject = function(idOrObj){
-    var obj = this.state.objects[idOrObj.id || idOrObj];
-    if (obj) {
-        this.callback_('objectDeleted', obj.id);
-        delete this.state.objects[obj.id];
-    }
-};
-
 /**
  * Set up an accurate timer in JS
  */
@@ -465,6 +484,7 @@ Game.prototype.load = function(savedState) {
           this.playersCount++;
   }
   this.changeBattleMode(savedState.isBattleMode);
+  this.callback_('load');
 };
 
 Game.prototype.objectExists = function(objId) {
@@ -475,10 +495,11 @@ Game.prototype.objectExists = function(objId) {
 // * Helper functions
 // */
 Game.prototype.callback_ = function(event, data) {
-  var callback = this.callbacks[event];
-  if (callback) {
-    callback(data);
-  }/* else {
+  var callbacks = this.callbacks[event];
+  if (callbacks)
+    for (var i in callbacks)
+      callbacks[i](data);
+  /* else {
     throw "Warning: No callback defined!";
   }*/
 };
@@ -492,7 +513,9 @@ Game.prototype.registerPlayerInput = function(input) {
 };
 
 Game.prototype.on = function(event, callback) {
-  this.callbacks[event] = callback;
+    if (typeof (this.callbacks[event]) === 'undefined')
+        this.callbacks[event] = [];
+    this.callbacks[event].push(callback);
 };
 
 /**************************************************

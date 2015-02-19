@@ -34,7 +34,14 @@ var Renderer = function(game,textures, viewCanvas) {
 
     this.initScreen();
     this.initSprites();
-    this.initWorldObjects();
+    //this.initWorldObjects();
+
+    //attach events
+    var that = this;
+    game.on('update',function(){that.renderCycle()});
+    game.on('objectCreate',function(obj){that.addWorldObject(obj)});
+    game.on('objectDelete',function(objId){that.removeWorldObject(objId)});
+    game.on('load',function(){that.initWorldObjects(); that.refreshPlayerObj()});
 };
 
 // just a few helper functions
@@ -57,6 +64,10 @@ if (!Array.prototype.indexOf) {
         return -1;
     };
 }
+
+Renderer.prototype.refreshPlayerObj = function(){
+    this.player = game.state.objects[0];
+};
 
 Renderer.prototype.initScreen = function () {
     for (var i=0;i<this.screenWidth;i+=this.stripWidth) {
@@ -104,40 +115,64 @@ Renderer.prototype.initSprites = function () {
     }
 };
 
+Renderer.prototype.addWorldObject = function(obj){
+    if (obj.type=='Player')
+        return;
+    var type = this.textures.worldObjects[obj.type];
+    var img = $('objectId_'+obj.id) || dc("img");
+    img.src = type.img;
+    img.style.display = "none";
+    img.style.position = "absolute";
+    img.id = 'objectId_'+obj.id;
+    img.className ='objectType_'+obj.type;
+
+    obj.oldStyles = {
+        left : 0,
+        top : 0,
+        width : 0,
+        height : 0,
+        clip : "",
+        display : "none",
+        zIndex : 0
+    };
+
+    obj.img = img;
+    //levitate here
+    obj.levitate = type.levitate;
+    this.worldObjectsSprites[obj.id] = obj;
+
+    this.viewCanvas.appendChild(img);
+};
+
+Renderer.prototype.removeWorldObject = function(objId) {
+    //if ( !this.game.state.objects[objId]) {
+        this.viewCanvas.removeChild(this.worldObjectsSprites[objId].img);
+        delete this.worldObjectsSprites[objId];
+    //}
+};
+
 Renderer.prototype.initWorldObjects = function () {
-    for (var i in this.game.state.objects) {
-        var obj = this.game.state.objects[i];
-        if (obj.type=='Player')
-            continue;
-        var type = this.textures.worldObjects[obj.type];
-        var img = dc("img");
-        img.src = type.img;
-        img.style.display = "none";
-        img.style.position = "absolute";
-        img.id = 'objectId_'+obj.id;
-        img.className ='objectType_'+obj.type;
+    var i;
+    //clear
+    for (i in this.worldObjectsSprites)
+        this.removeWorldObject(i);
+    //add new
+    for (i in this.game.state.objects)
+        this.addWorldObject(this.game.state.objects[i]);
+};
 
-        obj.oldStyles = {
-            left : 0,
-            top : 0,
-            width : 0,
-            height : 0,
-            clip : "",
-            display : "none",
-            zIndex : 0
-        };
 
-        obj.img = img;
-        //leviate here
-        obj.levitate = type.levitate;
-        this.worldObjectsSprites[obj.id] = obj;
-
-        this.viewCanvas.appendChild(img);
+Renderer.prototype.clearSprites = function() {
+    // clear the visible sprites array but keep a copy in oldVisibleSprites for later.
+    // also mark all the sprites as not visible so they can be added to visibleSprites again during raycasting.
+    for (var i=0; i < this.visibleSprites.length;i++) {
+        this.oldVisibleSprites[i] = this.visibleSprites[i];
+        this.oldVisibleSprites[i].visible = false;
     }
+    this.visibleSprites = [];
 };
 
 Renderer.prototype.renderCycle = function () {
-    this.player = game.state.objects[0];
     this.clearSprites();
     this.castRays();
     this.renderSky();
@@ -159,16 +194,6 @@ Renderer.prototype.renderCycle = function () {
     this.lastRenderTime = now;
     this.fps = 1000 / timeDelta;
 
-};
-
-Renderer.prototype.clearSprites = function() {
-    // clear the visible sprites array but keep a copy in oldVisibleSprites for later.
-    // also mark all the sprites as not visible so they can be added to visibleSprites again during raycasting.
-    for (var i=0; i < this.visibleSprites.length;i++) {
-        this.oldVisibleSprites[i] = this.visibleSprites[i];
-        this.oldVisibleSprites[i].visible = false;
-    }
-    this.visibleSprites = [];
 };
 
 Renderer.prototype.renderSprites = function () {
@@ -231,12 +256,6 @@ Renderer.prototype.getAnimationState = function(entity){
 Renderer.prototype.renderWorldObjects = function () {
     for (var i in this.worldObjectsSprites) {
         var obj = this.worldObjectsSprites[i];
-        // make sure object still exists
-        if (!this.game.state.objects[obj.id]) {
-            this.viewCanvas.removeChild(obj.img);
-            delete this.worldObjectsSprites[i];
-            continue;
-        }
         var img = obj.img;
 
         var dx = obj.x - this.player.x;
