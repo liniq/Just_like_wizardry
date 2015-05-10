@@ -231,6 +231,17 @@ var nickname;
             });
         });
 
+        socket.on('actionData', function(data) {
+            writeChatLine(data.nick + " will attack " + game.state.objects[data.t].type +' id='+data.t);
+        });
+
+        socket.on('turnFinish', function(turnStats) {
+            for (var i in turnStats){
+                var stat = turnStats[i];
+                writeChatLine(stat);
+            }
+        });
+
         socket.on('battleModeChange', function(data) {
             //set mode on client
             game.changeBattleMode(data.isBattleMode);
@@ -273,14 +284,19 @@ function requestControl()
     socket.emit('masterChanged',nickname);
 }
 
-function writeChatLine(text, timeout){
-    $("chat").innerHTML += "<br/>" + text;
-    setTimeout(clearChat, timeout || 5000);
+var chatContainer = $("chat");
+function writeChatLine(text){
+    var sp= dc("span");
+    sp.innerHTML = "<br/>" + text;
+    chatContainer.appendChild(sp);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
+setInterval(clearChat, 5000);
 function clearChat()
 {
-    $("chat").innerHTML ="";
+    if (chatContainer.childNodes.length > 0)
+        chatContainer.removeChild( $("chat").childNodes[0]);
 }
 //send action
 var actionData = {action:'',target:'', isSent:false};
@@ -288,7 +304,7 @@ function sendActionData(){
     if (actionData.isSent)
         return;
     socket.emit('actionData',{nick:palyerNick, a:actionData.action, t:actionData.target});
-    actionData.isSent=true;
+    //actionData.isSent=true;
 }
 
 var storedUserInput = {m:0, t:0};

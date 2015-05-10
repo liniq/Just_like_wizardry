@@ -253,8 +253,11 @@ div#ceiling {
     display: block;
     width: 250px;
     height: 90px;
-	padding: 10px;
-	font-size: 13px;
+	padding: 2px;
+	font-size: 12px;
+    overflow-y: hidden;
+    display: table-cell;
+    vertical-align: bottom;
 }
 
 #chat .red {
@@ -270,7 +273,7 @@ div#ceiling {
 }
 
 #choose {
-	background-image: #111 url(../img/menuback.png);
+	background: #111111 url(../img/menuback.png);
 	background-position: 150px 80px;
 	background-repeat: no-repeat;
 	position: absolute;

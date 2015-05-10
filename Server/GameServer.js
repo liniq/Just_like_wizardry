@@ -37,6 +37,7 @@ game.updateEvery(gameEngine.Game.UPDATE_INTERVAL,0);
 game.on('battleModeChange',serverHandleGameModeChanged);
 game.on('objectDelete',serverHandleObjectDeleted);
 game.on('objectCreate',serverHandleObjectCreated);
+game.on('turnFinish',serverHandleTurnFinished);
 
 function serverHandleGameModeChanged(newMode){
     io.sockets.emit('battleModeChange',{isBattleMode: newMode, gameState:game.save()});
@@ -47,6 +48,10 @@ function serverHandleObjectDeleted(objId){
 function serverHandleObjectCreated(obj){
     io.sockets.emit('objectCreate',obj);
 }
+function serverHandleTurnFinished(obj){
+    io.sockets.emit('turnFinish',obj);
+}
+
 //sockets stuff
 var masterSocketId=null;
 io.sockets.on('connection', function (socket) {

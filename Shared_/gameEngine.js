@@ -4,7 +4,7 @@
  */
  //max fps
 var Game = function(level, objectTypes, itemTypes) {
-    this.GUID = 'some random shit here';
+    //this.GUID = 'some random shit here';
     this.isClient = (typeof(window) == 'undefined' ? false : true);
     this.state = {
         objects:{},
@@ -15,9 +15,8 @@ var Game = function(level, objectTypes, itemTypes) {
     //this.itemTypes = itemTypes;
     this.level = level;
 
-    //containers to store player move and action input
+    //containers to store player move input
     this.movesArray = [];
-    this.actionsArray = {}; //per player nick;
     // Last used ID
     this.lastId = 0;
     this.playersCount =0;
@@ -45,9 +44,10 @@ var Game = function(level, objectTypes, itemTypes) {
         for (var i in objArray) {
             var obj = objArray[i];
             //obj hostile and close to player
-            if (obj.id !=0 && obj.distanceFrom(objArray[0])< Game.BattleRange) {
-                if (hostileOnly && obj.hostility)
-                    inBattle.push(objArray[i]);
+            if (obj.id !=0 && obj.distanceFrom(objArray[0])<= Game.BattleRange) {
+                if (!hostileOnly && !obj.hostility)
+                    continue;
+                inBattle.push(objArray[i]);
             }
         }
         return inBattle;
@@ -166,26 +166,66 @@ Game.prototype.computeState = function(delta) {
             //check if all players submitted actions
             var ready = true;
             for (i in objects[0].characters) {
-                if (objects[0].characters[i].nick && !this.actionsArray[objects[0].characters[i].nick]){
+                if (objects[0].characters[i].nick && !objects[0].characters[i].action){
                     ready=false;
                     break;
                 }
             }
             if (ready){
                 var objectsInBattle = this.getObjectsInBattle(objects);
+                //add player actions to the list
+                for (i in objects[0].characters) {
+                    if (objects[0].characters[i].nick)
+                        objectsInBattle.push(objects[0].characters[i]);
+                }
                 objectsInBattle.sort(initiativeSorter);
-
+                var statistics = [];
                 for (i in objectsInBattle) {
                     obj = objectsInBattle[i];
-                    //run battle AI
-                    if (this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI)
-                        this.objectTypes[obj.type].battleAI(obj, objects[0], objects, this.level);
+                    if (!obj) continue; //dead or so
+                    if (!obj.action && this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI) //run battle AI if present
+                        obj.action = this.objectTypes[obj.type].battleAI(obj,objects[0],objectsInBattle,this.level);
+
+                    statistics.push(this.processBattleAction(obj, objectsInBattle));
                 }
+                this.callback_('turnFinish',statistics);
             }
         }
     }
     newState.objects = objects;
     return newState;
+};
+
+//
+Game.prototype.processBattleAction = function(obj, objectsInBattle){
+
+    var target = null;
+    var summary = [];
+
+    if (!obj.action) {
+        summary.push(obj.nick || obj.type) + ' does nothing';
+        return summary;
+    }
+    if (obj.action.t == 'self')
+        target = obj;
+    for (var i in objectsInBattle) {
+        var t = objectsInBattle[i];
+        if (t.id == obj.action.t){
+            target = t;
+            break;
+        }
+    }
+    if (target) {
+        var dmg = Math.floor((Math.random() * (obj.damage[1] - obj.damage[0])) + obj.damage[0]);
+        summary.push((obj.nick || obj.type) +' attacks ' + (target.nick || target.type) + ': '+ dmg +' dmg');
+        target.currentHP -= dmg;
+        if (target.currentHP <=0 ){
+            summary.push((target.nick || target.type) +' dies!');
+            this.deleteObject(target.id,true);
+        }
+    }
+    obj.action = null;
+    return summary;
 };
 
 // change battle mode
@@ -200,13 +240,11 @@ Game.prototype.changeBattleMode = function(newMode){
 Game.prototype.forceEndBattle = function(){
     if (!this.isBattleMode)
         return;
-    var objects = this.state.objects;
-    for(var i in objects ) {
-        var obj = objects[i];
-        if (obj.hostility && obj.distanceFrom(objects[0]) < 1.5)
-            this.deleteObject(obj.id);
+    var inBattle = this.getObjectsInBattle(this.state.objects,true);
+    for(var i in inBattle ) {
+        this.deleteObject(inBattle[i].id);
     }
-    this.serverCheckBattleStart(objects);
+    this.serverCheckBattleStart(this.state.objects);
 };
 
 Game.prototype.createRandomEnemy = function(){
@@ -530,8 +568,13 @@ Game.prototype.newId_ = function() {
 };
 
 Game.prototype.registerPlayerInput = function(input) {
-    if (input.nick)
-        this.actionsArray.push(input);
+    if (input.nick) {
+        for (var i in this.state.objects[0].characters){
+            var chr = this.state.objects[0].characters[i];
+            if (chr.nick && chr.nick == input.nick)
+                chr.action = {a: input.a, t: input.t };
+        }
+    }
     else
         this.movesArray.push(input);
 };
@@ -660,14 +703,14 @@ var Player = function (params){
     // add characters
     this.characters	 = params.characters;
 	//calc initiative
-	//if (this.characters){
-	//	var totalInitiative =0;
-	//	var totalInitiative =0;
-	//	for (var i in this.characters)
-	//		totalInitiative+= this.characters[i].initiative;
-	//	this.initiative = totalInitiative/this.characters.length;
-	//}
-    
+    Object.defineProperties(this,{
+        'initiative': { get: function(){
+            var ti =0;
+            for (var i in this.characters)
+                ti+= this.characters[i].initiative;
+            return ti/this.characters.length;
+
+        }}});
 };
 Player.prototype = new MovingObject;
 Player.prototype.constructor = Player;
