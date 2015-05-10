@@ -1,0 +1,2 @@
+cf restart DeLibero 
+pause

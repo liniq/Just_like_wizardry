@@ -99,6 +99,11 @@ io.sockets.on('connection', function (socket) {
         }
     });
 
+    socket.on('actionData', function (data) {
+        game.registerPlayerInput(data);
+        io.sockets.emit('actionData', data);
+    });
+
     socket.on('move', function (data) {
         if (socket.id == masterSocketId){
             game.registerPlayerInput({turn: data.t, move:data.m});
@@ -106,7 +111,6 @@ io.sockets.on('connection', function (socket) {
             io.sockets.emit('move', {m: data.m, t:data.t, x:pl.x, y: pl.y, a:pl.angle});
             //io.sockets.emit('path', process.cwd());
         }
-
     });
 
     socket.on('forceEndBattle', function (data) {

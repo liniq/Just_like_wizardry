@@ -42,6 +42,8 @@ var Renderer = function(game,textures, viewCanvas) {
     game.on('objectCreate',function(obj){that.addWorldObject(obj)});
     game.on('objectDelete',function(objId){that.removeWorldObject(objId)});
     game.on('load',function(){that.initWorldObjects(); that.refreshPlayerObj()});
+    game.on('battleModeChange', function(newMode){that.battleModeChanged(newMode)});
+
 };
 
 // just a few helper functions
@@ -115,6 +117,16 @@ Renderer.prototype.initSprites = function () {
     }
 };
 
+Renderer.prototype.battleModeChanged = function(isBattle) {
+    for (var i in this.worldObjectsSprites) {
+        var obj = this.worldObjectsSprites[i];
+        var img = obj.img;
+        if (isBattle && img.className.indexOf('battle ')==-1)
+            img.className ='battle '+img.className;
+        else if (!isBattle && img.className.indexOf('battle ')!=-1)
+            img.className =img.className.replace('battle ','');
+    }
+};
 Renderer.prototype.addWorldObject = function(obj){
     if (obj.type=='Player')
         return;
@@ -124,7 +136,8 @@ Renderer.prototype.addWorldObject = function(obj){
     img.style.display = "none";
     img.style.position = "absolute";
     img.id = 'objectId_'+obj.id;
-    img.className ='objectType_'+obj.type;
+    img.className = this.game.isBattleMode ? 'battle objectType_'+obj.type : 'objectType_'+obj.type;
+    //img.onmouseover = function (){ this.className+=};
 
     obj.oldStyles = {
         left : 0,
@@ -278,6 +291,18 @@ Renderer.prototype.renderWorldObjects = function () {
 
             var x = Math.tan(angle) * this.viewDistance;
 
+            //show selection, if we starring on it
+            if (this.game.isBattleMode){
+                var hghidx = img.className.indexOf(' highlighted');
+                if (Math.abs(angle) < 0.08 && hghidx==-1){
+                    img.className += ' highlighted';
+                    obj.isSelected = true;
+                }
+                else if (Math.abs(angle) > 0.08 && hghidx !=-1){
+                    img.className = img.className.replace(' highlighted','');
+                    obj.isSelected = false;
+                }
+            }
             // height is equal to the sprite size
             if (size != oldStyles.height) {
                 style.height =  size + "px";

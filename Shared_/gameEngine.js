@@ -15,7 +15,9 @@ var Game = function(level, objectTypes, itemTypes) {
     //this.itemTypes = itemTypes;
     this.level = level;
 
-    this.actionArray = [];
+    //containers to store player move and action input
+    this.movesArray = [];
+    this.actionsArray = {}; //per player nick;
     // Last used ID
     this.lastId = 0;
     this.playersCount =0;
@@ -31,27 +33,32 @@ var Game = function(level, objectTypes, itemTypes) {
     if (!this.isClient) {
         this.serverCheckBattleStart = function(objArr){
             //check battle start here
-            var newBattleMode = false;
-            for (var i in objArr) {
-                var obj = objArr[i];
-                //obj hostile and close to player
-                if (obj.id !=0 && obj.hostility && obj.distanceFrom(objArr[0])< 1.5) {
-                    newBattleMode = true;
-                    break;
-                }
-            }
+            var newBattleMode = this.getObjectsInBattle(objArr,true).length >0;
             this.changeBattleMode(newBattleMode);
         }
     }
     else this.serverCheckBattleStart = function(objArr){};
 };
 
+    Game.prototype.getObjectsInBattle = function(objArray, hostileOnly){
+        var inBattle = [];
+        for (var i in objArray) {
+            var obj = objArray[i];
+            //obj hostile and close to player
+            if (obj.id !=0 && obj.distanceFrom(objArray[0])< Game.BattleRange) {
+                if (hostileOnly && obj.hostility)
+                    inBattle.push(objArray[i]);
+            }
+        }
+        return inBattle;
+    };
     //game settings
     Game.UPDATE_INTERVAL = Math.round(1000 / 30);
     Game.MAX_DELTA = 10000;
     Game.TARGET_LATENCY = 1000; // Maximum latency skew.
     Game.BattleRoundInCycles = 300;
     Game.minPlayers = 1;
+    Game.BattleRange = 1.8;
 
 Game.prototype.createObject = function(obj, preventEvent){
     var otypes = this.objectTypes;
@@ -123,21 +130,22 @@ Game.prototype.computeState = function(delta) {
     };
     var objects = this.state.objects;
     var i, obj;
-    var sortedByInitiative =[];
-    for(i in objects ) {
-        sortedByInitiative[i] = objects[i];
-    }
-    sortedByInitiative.sort(initiativeSorter);
-
     this.serverCheckBattleStart(objects);
 
     //set player action
-    if (this.actionArray.length>0) {
-        objects[0].turn = this.actionArray[this.actionArray.length-1].turn; //turn
-        objects[0].move = this.actionArray[this.actionArray.length-1].move; // move
-        this.actionArray = [];
+    if (this.movesArray.length>0) {
+        objects[0].turn = this.movesArray[this.movesArray.length-1].turn; //turn
+        objects[0].move = this.movesArray[this.movesArray.length-1].move; // move
+        this.movesArray = [];
     }
     if (!this.isBattleMode) {
+        var sortedByInitiative =[];
+        for(i in objects ) {
+            sortedByInitiative[i] = objects[i];
+        }
+        sortedByInitiative.sort(initiativeSorter);
+
+
         for (i in sortedByInitiative) {
             obj = objects[sortedByInitiative[i].id];
             // run AI
@@ -148,19 +156,32 @@ Game.prototype.computeState = function(delta) {
                 this.moveObject(delta, obj, objects);
         }
     }
-    else {
-        // battle mode
-
+    else { // battle mode
         //allow player to turn for free in battle mode
         if (objects[0].turn) {
             objects[0].move=0;
             this.moveObject(delta, objects[0], objects);
         }
-        for (i in objects) {
-            obj = objects[sortedByInitiative[i].id];
-            //run battle AI
-            if (this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI)
-                this.objectTypes[obj.type].battleAI(obj,objects[0],objects, this.level);
+        if (!this.isClient) {
+            //check if all players submitted actions
+            var ready = true;
+            for (i in objects[0].characters) {
+                if (objects[0].characters[i].nick && !this.actionsArray[objects[0].characters[i].nick]){
+                    ready=false;
+                    break;
+                }
+            }
+            if (ready){
+                var objectsInBattle = this.getObjectsInBattle(objects);
+                objectsInBattle.sort(initiativeSorter);
+
+                for (i in objectsInBattle) {
+                    obj = objectsInBattle[i];
+                    //run battle AI
+                    if (this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI)
+                        this.objectTypes[obj.type].battleAI(obj, objects[0], objects, this.level);
+                }
+            }
         }
     }
     newState.objects = objects;
@@ -509,7 +530,10 @@ Game.prototype.newId_ = function() {
 };
 
 Game.prototype.registerPlayerInput = function(input) {
-    this.actionArray.push(input);
+    if (input.nick)
+        this.actionsArray.push(input);
+    else
+        this.movesArray.push(input);
 };
 
 Game.prototype.on = function(event, callback) {

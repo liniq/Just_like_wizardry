@@ -5,23 +5,23 @@ var textures = {
     //here all images for walls
     walls: [
             "", //0 - empty
-            "img/textures/walls_1.png", //1
-            "img/textures/walls_2.png", //2
-            "img/textures/walls_3.png", //3
-            "img/textures/walls_4.png"  //4
+            "img/textures_dev/walls_1.png", //1
+            "img/textures_dev/walls_2.png", //2
+            "img/textures_dev/walls_3.png", //3
+            "img/textures_dev/walls_4.png"  //4
         ],
     //sprite is something not a wall, but also not a world object
     sprites: {
-        lamp: "img/sprites/bt.png"
+        lamp: "img/sprites_dev/bt.png"
     },
     //all other objects. Can be more than one image per object. Object has to be one of defined in objectTypes.js
     worldObjects: {
         donkey: {
-            img : "img/sprites/enemy_keeper.png",
+            img : "img/sprites_dev/enemy_keeper.png",
             levitate: true //render "floating" animation
         },
         guard: {
-            img : "img/sprites/guard.png",
+            img : "img/sprites_dev/guard.png",
             //Animated sprites props
             totalStates : 13,
             walkCycleTime: 1000,
