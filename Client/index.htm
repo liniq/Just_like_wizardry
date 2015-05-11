@@ -122,6 +122,7 @@
     var ren = new Renderer(game,textures,$('screen'));
     var spectators =0;
 function init() {
+    bindKeys(false);
     initNetwork();
     game.on('battleModeChange', onBattleModeChanged);
     game.on('objectDelete', function(objId){writeChatLine('Deleted object '+objId+'!');});
@@ -131,7 +132,7 @@ function init() {
 function refreshPartyUI()
 {
 
-};
+}
 
 function onBattleModeChanged(isBattleModeNew) {
     writeChatLine(isBattleModeNew ? " Started battle mode": "Finished battle mode");
@@ -194,7 +195,6 @@ var nickname;
                 game.join(data);
                 spectators--;
                 $('playersinfo').innerHTML = "Spectators: " + spectators + ", Players: " + game.getPlayerCount();
-
             }
             if (data.objects) {
                 game.load(data);
@@ -202,17 +202,8 @@ var nickname;
         });
         socket.on('masterChanged', function(data) {
             writeChatLine(data.nick + " now controls movements!");
-            if (socket.id == data.id)
-            {
-                bindKeys();
-                //$('masterbutt').disabled=true;
-            }
-            else
-            {
-                document.onkeyup = null;
-                document.onkeydown = null;
-                //$('masterbutt').disabled=false;
-            }
+            bindKeys(socket.id == data.id);
+            //$('masterbutt').disabled=socket.id == data.id;
         });
 
         socket.on('leave', function(data) {
@@ -232,7 +223,8 @@ var nickname;
         });
 
         socket.on('actionData', function(data) {
-            writeChatLine(data.nick + " will attack " + game.state.objects[data.t].type +' id='+data.t);
+            writeChatLine(data.nick + " will attack " + game.state.objects[data.t].type);
+            //writeChatLine(data.nick + " finished his turn");
         });
 
         socket.on('turnFinish', function(turnStats) {
@@ -328,7 +320,28 @@ function sendUserInput(){
 
 }
 // bind keyboard events to game functions (movement, etc)
-function bindKeys() {
+function bindKeys( isMaster) {
+    if (!isMaster) {
+        document.onkeydown = null;
+        document.onkeyup = function (e) {
+            e = e || window.event;
+            switch (e.keyCode) {
+                case 81:
+                    actionData.action = 'a';
+                    for (var i in ren.worldObjectsSprites) {
+                        var obj = ren.worldObjectsSprites[i];
+                        if (obj.isSelected) {
+                            actionData.target = '' + obj.id;
+                            break;
+                        }
+                    }
+                    if (actionData.target != '')
+                        sendActionData();
+                    break;
+            }
+        };
+        return;
+    }
 	document.onkeydown = function(e) {
 		e = e || window.event;
         switch (e.keyCode) { // which key was pressed?

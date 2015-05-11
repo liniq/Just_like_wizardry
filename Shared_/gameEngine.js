@@ -203,7 +203,7 @@ Game.prototype.processBattleAction = function(obj, objectsInBattle){
     var summary = [];
 
     if (!obj.action) {
-        summary.push(obj.nick || obj.type) + ' does nothing';
+        summary.push((obj.nick || obj.type) + ' does nothing');
         return summary;
     }
     if (obj.action.t == 'self')

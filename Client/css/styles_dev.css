@@ -248,13 +248,13 @@ div#ceiling {
 
 #chat {
     position: absolute;
-    bottom: 90px;
+    bottom: 20px;
     color: #ffffff;
     display: block;
     width: 250px;
     height: 90px;
 	padding: 2px;
-	font-size: 12px;
+	font-size: 11px;
     overflow-y: hidden;
     display: table-cell;
     vertical-align: bottom;
