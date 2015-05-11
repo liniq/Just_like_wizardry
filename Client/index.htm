@@ -202,7 +202,7 @@ var nickname;
         });
         socket.on('masterChanged', function(data) {
             writeChatLine(data.nick + " now controls movements!");
-            bindKeys(socket.id == data.id);
+            iAmMaster =  socket.id == data.id;
             //$('masterbutt').disabled=socket.id == data.id;
         });
 
@@ -235,6 +235,10 @@ var nickname;
         });
 
         socket.on('battleModeChange', function(data) {
+            //discard moves
+            storedUserInput.m=0;
+            storedUserInput.t=0;
+            sendUserInput();
             //set mode on client
             game.changeBattleMode(data.isBattleMode);
             //load precise positions of all units
@@ -303,6 +307,7 @@ var storedUserInput = {m:0, t:0};
 var sentUserInput = {m:0, t:0};
 var minUserInputInterval = 50;
 var lastUserInputTS = 0;
+var iAmMaster = false;
 function sendUserInput(){
     if (sentUserInput.m == storedUserInput.m && sentUserInput.t == storedUserInput.t) {
         return;
@@ -316,32 +321,15 @@ function sendUserInput(){
     sentUserInput.m = storedUserInput.m;
     sentUserInput.t = storedUserInput.t;
     lastUserInputTS = new Date().valueOf();
-    socket.emit('move',sentUserInput);
+    if (iAmMaster && !game.isBattleMode)
+        socket.emit('move',sentUserInput);
+    if (game.isBattleMode){
+        game.registerPlayerInput({move:sentUserInput.m,turn:sentUserInput.t});
+    }
 
 }
 // bind keyboard events to game functions (movement, etc)
-function bindKeys( isMaster) {
-    if (!isMaster) {
-        document.onkeydown = null;
-        document.onkeyup = function (e) {
-            e = e || window.event;
-            switch (e.keyCode) {
-                case 81:
-                    actionData.action = 'a';
-                    for (var i in ren.worldObjectsSprites) {
-                        var obj = ren.worldObjectsSprites[i];
-                        if (obj.isSelected) {
-                            actionData.target = '' + obj.id;
-                            break;
-                        }
-                    }
-                    if (actionData.target != '')
-                        sendActionData();
-                    break;
-            }
-        };
-        return;
-    }
+function bindKeys() {
 	document.onkeydown = function(e) {
 		e = e || window.event;
         switch (e.keyCode) { // which key was pressed?

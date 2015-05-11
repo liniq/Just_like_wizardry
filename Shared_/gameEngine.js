@@ -34,9 +34,17 @@ var Game = function(level, objectTypes, itemTypes) {
             //check battle start here
             var newBattleMode = this.getObjectsInBattle(objArr,true).length >0;
             this.changeBattleMode(newBattleMode);
-        }
+        };
+        this.processBattle = function(delta, objArr){
+            this.processBattleServer(delta, objArr);
+        };
     }
-    else this.serverCheckBattleStart = function(objArr){};
+    else {
+        this.serverCheckBattleStart = function(objArr){};
+        this.processBattle = function(delta, objArr){
+            this.processBattleClient(delta, objArr);
+        };
+    }
 };
 
     Game.prototype.getObjectsInBattle = function(objArray, hostileOnly){
@@ -124,10 +132,6 @@ var initiativeSorter = function (a,b){
  * @return {object} The new game state at that timestamp
 */
 Game.prototype.computeState = function(delta) {
-    var newState = {
-        objects: {},
-        timeStamp: this.state.timeStamp + delta
-    };
     var objects = this.state.objects;
     var i, obj;
     this.serverCheckBattleStart(objects);
@@ -157,45 +161,43 @@ Game.prototype.computeState = function(delta) {
         }
     }
     else { // battle mode
-        //allow player to turn for free in battle mode
-        if (objects[0].turn) {
-            objects[0].move=0;
-            this.moveObject(delta, objects[0], objects);
-        }
-        if (!this.isClient) {
-            //check if all players submitted actions
-            var ready = true;
-            for (i in objects[0].characters) {
-                if (objects[0].characters[i].nick && !objects[0].characters[i].action){
-                    ready=false;
-                    break;
-                }
-            }
-            if (ready){
-                var objectsInBattle = this.getObjectsInBattle(objects);
-                //add player actions to the list
-                for (i in objects[0].characters) {
-                    if (objects[0].characters[i].nick)
-                        objectsInBattle.push(objects[0].characters[i]);
-                }
-                objectsInBattle.sort(initiativeSorter);
-                var statistics = [];
-                for (i in objectsInBattle) {
-                    obj = objectsInBattle[i];
-                    if (!obj) continue; //dead or so
-                    if (!obj.action && this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI) //run battle AI if present
-                        obj.action = this.objectTypes[obj.type].battleAI(obj,objects[0],objectsInBattle,this.level);
-
-                    statistics.push(this.processBattleAction(obj, objectsInBattle));
-                }
-                this.callback_('turnFinish',statistics);
-            }
-        }
+        this.processBattle(delta, objects);
     }
-    newState.objects = objects;
-    return newState;
+    this.state.objects = objects;
+    this.state.timeStamp = this.state.timeStamp +  delta;
 };
 
+Game.prototype.processBattleServer = function(delta, objects){
+    var i;
+    for (i in objects[0].characters) { //all have submitted actions
+        if (objects[0].characters[i].nick && !objects[0].characters[i].action)
+            return;
+    }
+    var objectsInBattle = this.getObjectsInBattle(objects);
+    //add player actions to the list
+    for (i in objects[0].characters) {
+        if (objects[0].characters[i].nick)
+            objectsInBattle.push(objects[0].characters[i]);
+    }
+    objectsInBattle.sort(initiativeSorter);
+    var statistics = [];
+    for (i in objectsInBattle) {
+        var obj = objectsInBattle[i];
+        if (!obj) continue; //dead or so
+        if (!obj.action && this.objectTypes[obj.type] && this.objectTypes[obj.type].battleAI) //run battle AI if present
+            obj.action = this.objectTypes[obj.type].battleAI(obj,objects[0],objectsInBattle,this.level);
+
+        statistics.push(this.processBattleAction(obj, objectsInBattle));
+    }
+    this.callback_('turnFinish',statistics);
+};
+
+Game.prototype.processBattleClient = function(delta, objects){
+    if (objects[0].turn) {
+        objects[0].move = 0;
+        this.moveObject(delta, objects[0], objects);
+    }
+};
 //
 Game.prototype.processBattleAction = function(obj, objectsInBattle){
 
@@ -222,6 +224,7 @@ Game.prototype.processBattleAction = function(obj, objectsInBattle){
         if (target.currentHP <=0 ){
             summary.push((target.nick || target.type) +' dies!');
             this.deleteObject(target.id,true);
+            delete objectsInBattle[i];
         }
     }
     obj.action = null;
@@ -428,11 +431,9 @@ Game.prototype.update = function(timeStamp) {
   if (delta < 0) {
     throw "Can't compute state in the past. Delta: " + delta;
   }
-  //if (delta > Game.MAX_DELTA) {
-  //  throw "Can't compute state so far in the future. Delta: " + delta;
-  //}
-
-  this.state = this.computeState(delta);
+  if (this.playersCount < Game.minPlayers)
+      return;
+  this.computeState(delta);
   this.updateCount++;
   this.callback_('update');
 };
