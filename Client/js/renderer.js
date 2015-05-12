@@ -10,7 +10,7 @@ var Renderer = function(game,textures, viewCanvas) {
     this.player = game.state.objects[0];
 
     this.screenWidth = 800;
-    this.screenHeight =500;
+    this.screenHeight =550;
     this.miniMapScale = 8;
     this.showOverlay = true;
     this.showMiniMap = true;
@@ -50,6 +50,7 @@ var Renderer = function(game,textures, viewCanvas) {
 var $ = function(id) { return document.getElementById(id); };
 var dc = function(tag) { return document.createElement(tag); };
 var twoPI = Math.PI * 2;
+var halfPI = Math.PI * 0.5;
 
 // indexOf for IE. From: https://developer.mozilla.org/En/Core_JavaScript_1.5_Reference:Objects:Array:indexOf
 if (!Array.prototype.indexOf) {
@@ -94,8 +95,18 @@ Renderer.prototype.initScreen = function () {
     this.overlay = dc("div");
     this.overlay.id = "overlay";
     this.overlay.style.display = this.showOverlay ? "block" : "none";
-    this.viewCanvas.appendChild(this.overlay);
 
+    this.mousePos = {x:0,y:0};
+    var that = this;
+    this.overlay.onmousemove = function(e){
+        that.mousePos.x = e.pageX - that.viewCanvas.offsetLeft;
+        that.mousePos.y = e.pageY - that.viewCanvas.offsetTop;
+    };
+    this.overlay.onmouseout = function(e){
+        that.mousePos.x = -1;
+        that.mousePos.y = -1;
+    };
+    this.viewCanvas.appendChild(this.overlay);
 };
 
 Renderer.prototype.initSprites = function () {
@@ -118,14 +129,16 @@ Renderer.prototype.initSprites = function () {
 };
 
 Renderer.prototype.battleModeChanged = function(isBattle) {
-    for (var i in this.worldObjectsSprites) {
-        var obj = this.worldObjectsSprites[i];
+    var objInBattle = game.getObjectsInBattle(this.worldObjectsSprites);
+    for (var i in objInBattle) {
+        var obj = objInBattle[i];
         var img = obj.img;
         if (isBattle && img.className.indexOf('battle ')==-1)
             img.className ='battle '+img.className;
         else if (!isBattle && img.className.indexOf('battle ')!=-1)
             img.className =img.className.replace('battle ','');
     }
+    objInBattle=null;
 };
 Renderer.prototype.addWorldObject = function(obj){
     if (obj.type=='Player')
@@ -137,7 +150,6 @@ Renderer.prototype.addWorldObject = function(obj){
     img.style.position = "absolute";
     img.id = 'objectId_'+obj.id;
     img.className = this.game.isBattleMode ? 'battle objectType_'+obj.type : 'objectType_'+obj.type;
-    //img.onmouseover = function (){ this.className+=};
 
     obj.oldStyles = {
         left : 0,
@@ -193,12 +205,14 @@ Renderer.prototype.renderCycle = function () {
     this.renderWorldObjects();
 
 
-    if (this.showMiniMap) {
-        this.updateMiniMap();
-        this.drawMiniMap();
-    }
-    if (this.showOverlay) {
-        this.updateOverlay();
+    if (game.updateCount%4 == 0) {
+        if (this.showMiniMap) {
+            this.updateMiniMap();
+            this.drawMiniMap();
+        }
+        if (this.showOverlay) {
+            this.updateOverlay();
+        }
     }
 
     // time since last rendering
@@ -210,9 +224,9 @@ Renderer.prototype.renderCycle = function () {
 };
 
 Renderer.prototype.renderSprites = function () {
-
+    var img;
     for (var i=0; i< this.visibleSprites.length; i++) {
-        var img = this.visibleSprites[i];
+        img = this.visibleSprites[i];
         img.style.display = "block";
 
         // translate position to viewer space
@@ -267,42 +281,33 @@ Renderer.prototype.getAnimationState = function(entity){
 };
 
 Renderer.prototype.renderWorldObjects = function () {
+    var obj;
+    var img;
+    var dx,dy;
+    var angle;
+
     for (var i in this.worldObjectsSprites) {
-        var obj = this.worldObjectsSprites[i];
-        var img = obj.img;
+        obj = this.worldObjectsSprites[i];
+        img = obj.img;
 
-        var dx = obj.x - this.player.x;
-        var dy = obj.y - this.player.y;
+        dx = obj.x - this.player.x;
+        dy = obj.y - this.player.y;
 
-        var angle =  Math.atan2(dy, dx) - this.player.angleRad;
+        angle =  Math.atan2(dy, dx) - this.player.angleRad;
 
-        if (angle < -Math.PI) angle += 2*Math.PI;
-        if (angle >= Math.PI) angle -= 2*Math.PI;
+        if (angle < -Math.PI) angle += twoPI;
+        if (angle >= Math.PI) angle -= twoPI;
 
         // is obj in front of player? Maybe use the FOV value instead.
         var style = img.style;
         var oldStyles = obj.oldStyles;
-        if (angle > -Math.PI*0.5 && angle < Math.PI*0.5) {
+        if (angle > -halfPI && angle < halfPI) {
             var distSquared = dx*dx + dy*dy;
             var dist = Math.sqrt(distSquared);
             var size = this.viewDistance / (Math.cos(angle) * dist);
 
             if (size <= 0) continue;
 
-            var x = Math.tan(angle) * this.viewDistance;
-
-            //show selection, if we starring on it
-            if (this.game.isBattleMode){
-                var hghidx = img.className.indexOf(' highlighted');
-                if (Math.abs(angle) < 0.08 && hghidx==-1){
-                    img.className += ' highlighted';
-                    obj.isSelected = true;
-                }
-                else if (Math.abs(angle) > 0.08 && hghidx !=-1){
-                    img.className = img.className.replace(' highlighted','');
-                    obj.isSelected = false;
-                }
-            }
             // height is equal to the sprite size
             if (size != oldStyles.height) {
                 style.height =  size + "px";
@@ -329,13 +334,20 @@ Renderer.prototype.renderWorldObjects = function () {
                 oldStyles.top = styleTop;
             }
 
-            var walkState = this.getAnimationState(obj);
+            var walkState = obj.isSelected ? 1 : 0;this.getAnimationState(obj);
             // place at x position, adjusted for sprite size and the current sprite state
-            var styleLeft = (this.screenWidth/2 + x - size/2 - size*walkState);
+            var x = Math.tan(angle) * this.viewDistance + this.screenWidth/2 - size/2;
+            var styleLeft = x - size*walkState;
             if (styleLeft != oldStyles.left) {
                 style.left = styleLeft + "px";
                 oldStyles.left = styleLeft;
             }
+
+            //show selection
+            var szCropX = Math.round(size*0.11);
+            var szCropY = Math.round(size*0.11);
+            obj.isSelected = this.mousePos.x > x + szCropX && this.mousePos.x < x + size - szCropX
+                        && this.mousePos.y > styleTop + szCropY && this.mousePos.y < styleTop + size - szCropY;
 
             var styleZIndex = -(distSquared*1000)>>0;
             if (styleZIndex != oldStyles.zIndex) {
@@ -381,7 +393,6 @@ Renderer.prototype.castRays = function() {
         // the angle of the ray, relative to the viewing direction.
         // right triangle: a = sin(A) * c
         var rayAngle = Math.asin(rayScreenPos / rayViewDist);
-
         this.castSingleRay(
                 this.player.angleRad + rayAngle, 	// add the players viewing direction to get the angle in world space
             stripIdx++
@@ -595,7 +606,7 @@ Renderer.prototype.castSingleRay = function (rayAngle, stripIdx) {
 };
 var skyOffConst = -2000 / Math.PI;
 Renderer.prototype.renderSky = function() {
-    var skyOff = parseInt((this.player.angleRad + Math.PI/2 ) * skyOffConst);
+    var skyOff = parseInt((this.player.angleRad + halfPI ) * skyOffConst);
     // Don't put the sky in the frame array, because that's too slow.  Instead, keep it separate and just change the offset
     $("ceiling").style.backgroundPosition = skyOff + "px 0px";
 };

@@ -52,7 +52,7 @@ div#floor {
 div#ceiling {
     position : absolute;
     width : 800px;
-    height : 250px;
+    height : 275px;
     background: #333;
     z-index : -10000000;
 }
@@ -381,11 +381,12 @@ div#ceiling {
     left: 12px;
     z-index : 11111111;
 }
-/* battle class for enemies */
+/* battle class for enemies
 
 img.battle {
-     background: #ff0000;
+     background: papayawhip;
  }
+*/
 img.highlighted {
     background: peachpuff;
 }

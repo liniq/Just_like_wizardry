@@ -10,7 +10,10 @@
 <script src="js/objectTextures.js" type="text/javascript"></script>
 <script src="js/renderer.js" type="text/javascript"></script>
 <script src="/socket.io/socket.io.js" type="text/javascript"></script>
+
+<!--
 <link href='http://fonts.googleapis.com/css?family=Roboto+Slab:400,700' rel='stylesheet' type='text/css'>
+-->
 </head>
 <body>
 
@@ -189,8 +192,9 @@ var nickname;
         });
 
         socket.on('playerJoin', function(data) {
-            $('choose').style.display='none';
             if (data.nick) {
+                if (data.nick == playerNick)
+                    $('choose').style.display='none';
                 writeChatLine(data.nick +" joined the game as " + data.character+ "!");
                 game.join(data);
                 spectators--;
@@ -263,16 +267,16 @@ function createRandomEnemy(){
     socket.emit('createRandomEnemy');
 }
 
-var palyerNick ='';
+var playerNick ='';
 function tryJoin(character){
     var el = $('nickname');
-    palyerNick = el.value.trim();
-    if (palyerNick.length<3){
+    playerNick = el.value.trim();
+    if (playerNick.length<3){
         alert("type nick!");
         el.focus();
         return;
     }
-    socket.emit('join',{character:character,nick:palyerNick});
+    socket.emit('join',{character:character,nick:playerNick});
 }
 
 function requestControl()
@@ -299,7 +303,7 @@ var actionData = {action:'',target:'', isSent:false};
 function sendActionData(){
     if (actionData.isSent)
         return;
-    socket.emit('actionData',{nick:palyerNick, a:actionData.action, t:actionData.target});
+    socket.emit('actionData',{nick:playerNick, a:actionData.action, t:actionData.target});
     //actionData.isSent=true;
 }
 
