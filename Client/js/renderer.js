@@ -129,9 +129,11 @@ Renderer.prototype.initSprites = function () {
 };
 
 Renderer.prototype.battleModeChanged = function(isBattle) {
-    var objInBattle = game.getObjectsInBattle(this.worldObjectsSprites);
+    var objInBattle = this.game.getObjectsInBattle(this.game.state.objects);
     for (var i in objInBattle) {
-        var obj = objInBattle[i];
+        var obj = this.worldObjectsSprites[i];
+        if (!obj)
+            continue;
         var img = obj.img;
         if (isBattle && img.className.indexOf('battle ')==-1)
             img.className ='battle '+img.className;
