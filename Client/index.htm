@@ -6,8 +6,10 @@
 <script src="js/excanvas.js" type="text/javascript"></script>
 <script src="./level.js"></script>
 <script src="./objectTypes.js"></script>
+<script src="./itemTypes.js"></script>
 <script src="./gameEngine.js"></script>
 <script src="js/objectTextures.js" type="text/javascript"></script>
+<script src="js/itemTextures.js" type="text/javascript"></script>
 <script src="js/renderer.js" type="text/javascript"></script>
 <script src="/socket.io/socket.io.js" type="text/javascript"></script>
 
@@ -121,7 +123,7 @@
 </div>
 <div id="debug"></div>
 <script type="text/javascript">
-    var game = new Game(window.gameLevel,window.gameTypes);
+    var game = new Game(window.gameLevel,window.gameTypes, window.itemTypes);
     var ren = new Renderer(game,textures,$('screen'));
     var spectators =0;
 function init() {

@@ -16,52 +16,103 @@ var defaultAI = function (me,player,others,level){
     }
 };
 
-//declare new object in game and its characteristics.  Add more objects here. Possible objectTypes in game -WorldObject,MovingObject,KillableObject,ContainerObject
-//exports.some = {type:'some', objectType: 'WorldObject', isPenetratable: true};
-exports.guard = {type:'guard', objectType: 'KillableObject', isPenetratable:false, totalHP:10, moveSpeed: 0.03, turnSpeed: 3, initiative: 1, hostility:1, AI: defaultAI, battleAI: null};
-exports.donkey= {type:'donkey', objectType: 'KillableObject', totalHP:15, moveSpeed:0.01, turnSpeed:1, r:0.8, hostility: 1, initiative: 3, AI: defaultAI, battleAI: null};
+//supported battle props
+    /*
+    HP: [1,1]; // current, max
+    SP: [1,1]; // current, max
+    damage: [[0,5],[0,0]]; //damage types [physical,magic], per type[min/max]
+    resist: [0,0.25]; // resists per damage type
+    attack: 1; //attackRating
+    defence: 1; //defenceRating
+    attackType: 0; // melee or ranged
+    */
+
+//declare new object in game and its characteristics.  Add more objects here. Possible objectTypes in game -WorldObject,MovingObject,LivingObject,ContainerObject
+//exports.some = {type:'some', objectType: 'WorldObject', props};
+exports.guard = {
+    objectType: 'LivingObject',
+    moveSpeed: 0.03,
+    initiative: 3,
+    HP: [10,10],
+    damage: [[0,3],[0,0]],
+    AI: defaultAI,
+    battleAI: null
+};
+exports.donkey = {
+    objectType: 'LivingObject',
+    moveSpeed:0.01,
+    r:0.8,
+    initiative: 3,
+    HP: [10,10],
+    damage: [[0,3],[0,0]],
+    AI: defaultAI,
+    battleAI: null
+};
+
+//definition of player characters characteristics
+exports.Player = {
+	objectType: 'Player',
+	characters: {
+		Zombotron: {
+            initiative: 1,
+            HP: [10,10],
+            SP: [10,10],
+            damage: [[0,1],[0,0]],
+            resist: [0,0],
+            attack:1,
+            defence:1,
+            attackType:0,
+            equipped:{
+                hand1:'Crude Dagger',
+                hand2:'Buckler Shield'
+            }
+		},
+		Lososo: {
+            initiative: 1,
+            HP: [10,10],
+            SP: [10,10],
+            damage: [[0,1],[0,0]],
+            resist: [0,0],
+            attack:1,
+            defence:1,
+            attackType:0,
+
+            inventory:['Red Potion', 'Blue Potion']
+		},
+		WarGay: {
+            initiative: 1,
+            HP: [10,10],
+            SP: [10,10],
+            damage: [[0,1],[0,0]],
+            resist: [0,0],
+            attack:1,
+            defence:1,
+            attackType:0
+		},
+		PabloPicasso: {
+            initiative: 1,
+            HP: [10,10],
+            SP: [10,10],
+            damage: [[0,1],[0,0]],
+            resist: [0,0],
+            attack:1,
+            defence:1,
+            attackType:0,
+            equipped:{
+                body:'Robe'
+            }
+		}
+	}
+};
 
 exports.GetNew = function(typeName) {
     return JSON.parse( JSON.stringify( exports[typeName] ) );
 };
 
-//definition of player characters characteristics
-exports.Player = {
-	type:'Player', 
-	objectType: 'Player',
-	isPenetratable:false,
-	moveSpeed: 0.08,
-    turnSpeed: 3,
-	characters: {
-		Zombotron: {
-			totalHP: 15,
-			currentHP: 15,
-			damage: [1,3], //min,max
-			meleeAttackRange: 0.6,
-			initiative: 1
-		},
-		Lososo: {
-			totalHP: 10,
-			currentHP: 10,
-			damage: [2,3],
-			meleeAttackRange: 0.5,
-			initiative: 1
-		},
-		WarGay: {
-			totalHP: 8,
-			currentHP: 8,
-			damage: [2,4],
-			meleeAttackRange: 0.7,
-			initiative: 1
-		},
-		PabloPicasso: {
-			totalHP: 11,
-			currentHP: 11,
-			damage: [0,5],
-			meleeAttackRange: 0.6,
-			initiative: 1
-		}
-	}
-};
+
+for (var prop in exports) {
+    if (exports.hasOwnProperty(prop))
+            exports[prop].type = ''+prop;
+}
 
 })(typeof global === "undefined" ? window.gameTypes = {} : exports);

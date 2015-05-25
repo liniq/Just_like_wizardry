@@ -12,6 +12,7 @@ var io = require('socket.io')(server.server);
 var gameEngine = require("../Shared_/gameEngine.js");
 var level = require("../Shared_/level.js");
 var objTypes = require("../Shared_/objectTypes.js");
+var itemTypes = require("../Shared_/itemTypes.js");
 
 server.use(restify.acceptParser(server.acceptable));
 server.use(restify.queryParser());
@@ -27,12 +28,15 @@ server.get(/level.js/, restify.serveStatic({
 server.get(/objectTypes.js/, restify.serveStatic({
     directory: './Shared_'
 }));
+server.get(/itemTypes.js/, restify.serveStatic({
+    directory: './Shared_'
+}));
 server.get(/.*/, restify.serveStatic({
     directory: './Client',
     default: 'index.htm'
 }));
 
-var game = new gameEngine.Game(level,objTypes,null);
+var game = new gameEngine.Game(level,objTypes,itemTypes);
 game.updateEvery(gameEngine.Game.UPDATE_INTERVAL,0);
 game.on('battleModeChange',serverHandleGameModeChanged);
 game.on('objectDelete',serverHandleObjectDeleted);

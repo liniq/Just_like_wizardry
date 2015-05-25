@@ -12,7 +12,7 @@ var Game = function(level, objectTypes, itemTypes) {
     };
     this.isBattleMode = false;
     this.objectTypes = objectTypes;
-    //this.itemTypes = itemTypes;
+    this.itemTypes = itemTypes;
     this.level = level;
 
     //containers to store player move input
@@ -53,7 +53,7 @@ var Game = function(level, objectTypes, itemTypes) {
             var obj = objArray[i];
             //obj hostile and close to player
             if (obj.id !=0 && obj.distanceFrom(objArray[0])<= Game.BattleRange) {
-                if (!hostileOnly && !obj.hostility)
+                if (!hostileOnly && !obj.isHostile)
                     continue;
                 inBattle.push(objArray[i]);
             }
@@ -62,11 +62,11 @@ var Game = function(level, objectTypes, itemTypes) {
     };
     //game settings
     Game.UPDATE_INTERVAL = Math.round(1000 / 30);
-    Game.MAX_DELTA = 10000;
-    Game.TARGET_LATENCY = 1000; // Maximum latency skew.
     Game.BattleRoundInCycles = 300;
-    Game.minPlayers = 1;
+    Game.MinPlayers = 1;
     Game.BattleRange = 1.8;
+    Game.CreatureSightRange = 15;
+    Game.MeleeInteractionRange = 0.3;
 
 Game.prototype.createObject = function(obj, preventEvent){
     var otypes = this.objectTypes;
@@ -83,10 +83,20 @@ Game.prototype.createObject = function(obj, preventEvent){
             params.x = obj.x;
             params.y = obj.y;
         }
-        if (params.objectType == 'Player')
-            this.state.objects[params.id] = new Player(params);
-        else if (params.objectType == 'KillableObject')
-            this.state.objects[params.id] = new KillableObject(params);
+        if (params.objectType == 'Player'){
+            var pl = new Player(params);
+            //equip items on start
+            if (typeof obj.id === 'undefined') {
+                for (var i in pl.characters) {
+                    var ch = pl.characters[i];
+                    for (var it in ch.equipped)
+                        pl.equipUnEquipItem(ch, this.itemTypes[ch.equipped[it]]);
+                }
+            }
+            this.state.objects[params.id] = pl;
+        }
+        else if (params.objectType == 'LivingObject')
+            this.state.objects[params.id] = new LivingObject(params);
         else if (params.objectType == 'MovingObject')
             this.state.objects[params.id] = new MovingObject(params);
         else if (params.objectType == 'ContainerObject')
@@ -218,10 +228,10 @@ Game.prototype.processBattleAction = function(obj, objectsInBattle){
         }
     }
     if (target) {
-        var dmg = Math.floor((Math.random() * (obj.damage[1] - obj.damage[0])) + obj.damage[0]);
+        var dmg = Math.round((Math.random() * (obj.damage[0][1] - obj.damage[0][0])) + obj.damage[0][0]);
         summary.push((obj.nick || obj.type) +' attacks ' + (target.nick || target.type) + ': '+ dmg +' dmg');
-        target.currentHP -= dmg;
-        if (target.currentHP <=0 ){
+        target.HP[0] -= dmg;
+        if (target.HP[0] <=0 ){
             summary.push((target.nick || target.type) +' dies!');
             this.deleteObject(target.id,true);
             delete objectsInBattle[i];
@@ -431,7 +441,7 @@ Game.prototype.update = function(timeStamp) {
   if (delta < 0) {
     throw "Can't compute state in the past. Delta: " + delta;
   }
-  if (this.playersCount < Game.minPlayers)
+  if (this.playersCount < Game.MinPlayers)
       return;
   this.computeState(delta);
   this.updateCount++;
@@ -637,7 +647,7 @@ var MovingObject = function(params) {
         return;
     }
   this.angle = params.angle || 0;
-  this.turnSpeed = params.turnSpeed || 0;
+  this.turnSpeed = params.turnSpeed || 1;
   this.moveSpeed = params.moveSpeed || 0;
   this.angleRad = params.angleRad || 0;
   
@@ -667,27 +677,31 @@ ContainerObject.prototype = new WorldObject;
 ContainerObject.prototype.constructor = ContainerObject;
 
 //represents a creature that can participate in battle. hostile or not
-var KillableObject = function (params){
+var LivingObject = function (params){
     if (!params) {
         return;
     }
-	this.hostility = params.hostility || 0;
-	this.totalHP = params.totalHP || 1;
-	this.currentHP = params.currentHP || this.totalHP;
-	this.defence = params.defence || 0;
-	this.sightDistance = params.sightDistance || 10;
-	if (typeof params.isPenetratable === 'undefined')
+    this.isHostile = typeof params.isHostile === 'undefined' ? 1 : params.isHostile; //hostile by default
+
+    if (typeof params.isPenetratable === 'undefined')
         params.isPenetratable=false;
 	
 	//battle mode props
-    //todo spellpoints, characteristics, attack, class etc
+    this.HP = params.HP || [1,1]; // current, max
+    this.SP = params.SP || [0,0]; // current, max
+    this.damage = params.damage || [[0,0],[0,0]]; //damage types [physical,magic], per type[min/max]
+    this.resist = params.resist || [0,0]; // resists per damage type
+    this.attack = params.attack || 1;
+    this.defence = params.defence || 1;
+    this.attackType = params.attackType || 0; //melee or ranged
+
     if (!this.objectType)
-	  this.objectType ='KillableObject';
+	  this.objectType ='LivingObject';
 	MovingObject.call(this, params);
     this.meleeAttackRange = params.meleeAttackRange || (this.r+0.3);
 };
-KillableObject.prototype = new MovingObject;
-KillableObject.prototype.constructor = KillableObject;
+LivingObject.prototype = new MovingObject;
+LivingObject.prototype.constructor = LivingObject;
 
 var Player = function (params){
     if (!params) {
@@ -701,9 +715,23 @@ var Player = function (params){
     this.isPenetratable= params.isPenetratable || false;
     this.moveSpeed = params.moveSpeed || 0.08;
     this.turnSpeed = params.turnSpeed || 3;
-    // add characters
+    // add characters and any missing battle props
+    for (var i in params.characters){
+        var ch = params.characters[i];
+        ch.HP = params.characters[i].HP || [1,1]; // current, max
+        ch.SP = params.characters[i].SP || [0,0]; // current, max
+        ch.damage = params.characters[i].damage || [[0,0],[0,0]]; //damage types [physical,magic], per type[min/max]
+        ch.resist = params.characters[i].resist || [0,0]; // resists per damage type
+        ch.attack = params.characters[i].attack || 1;
+        ch.defence = params.characters[i].defence || 1;
+        ch.attackType = params.characters[i].attackType || 0; //melee or ranged
+
+        if (!ch.inventory) ch.inventory = [];
+        if (!ch.equipped) ch.equipped = {};
+    }
     this.characters	 = params.characters;
-	//calc initiative
+
+    //calc initiative
     Object.defineProperties(this,{
         'initiative': { get: function(){
             var ti =0;
@@ -715,6 +743,38 @@ var Player = function (params){
 };
 Player.prototype = new MovingObject;
 Player.prototype.constructor = Player;
+
+Player.prototype.equipUnEquipItem = function(character,item,isUnequip, slot) {
+    if (!item.canEquip)
+        return;
+    var mod = isUnequip? -1:1;
+    for (var efname in item.effects){
+        var effect = item.effects[efname];
+        if (efname == 'HP' || efname == 'SP'){
+            character[efname][1]+=effect*mod;
+        }
+        else if (efname == 'damage'){
+            for (var dmgType in character[efname]){
+                character[efname][dmgType][0]+=effect[dmgType][0]*mod;
+                character[efname][dmgType][1]+=effect[dmgType][1]*mod;
+            }
+        }
+        else if (efname == 'resist')
+            for (var rType in character[efname])
+                character[efname][rType]+=effect[rType]*mod;
+        else if (efname == 'attackType')
+            character[efname]= isUnequip ? !effect: effect;
+        else
+            character[efname]+=effect*mod;
+    }
+    if (isUnequip) // change to slot here
+        delete character.equipped[item.type];
+    else character.equipped[item.type] = item;
+};
+Player.prototype.useItem = function(character,target,item) {
+    if (!item.canUse)
+        return;
+};
 
 exports.Game = Game;
 
